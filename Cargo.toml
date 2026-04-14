@@ -3,6 +3,29 @@ name = "openvpn-gui-linux"
 version = "0.1.0"
 edition = "2024"
 description = "A simple Linux GUI for OpenVPN"
+license = "MIT"
+homepage = "https://github.com/DenysFizer/openvpn-gui-linux"
+repository = "https://github.com/DenysFizer/openvpn-gui-linux"
+
+[package.metadata.deb]
+maintainer = "Denys Fizer <fizerdenys@gmail.com>"
+section = "net"
+priority = "optional"
+depends = "$auto, openvpn"
+assets = [
+    ["target/release/openvpn-gui-linux", "usr/bin/", "755"],
+    ["packaging/openvpn-gui-linux.desktop", "usr/share/applications/", "644"],
+    ["assets/logo.png", "usr/share/icons/hicolor/256x256/apps/openvpn-gui-linux.png", "644"],
+]
+
+[package.metadata.generate-rpm]
+license = "MIT"
+requires = { openvpn = "*" }
+assets = [
+    { source = "target/release/openvpn-gui-linux", dest = "/usr/bin/openvpn-gui-linux", mode = "755" },
+    { source = "packaging/openvpn-gui-linux.desktop", dest = "/usr/share/applications/openvpn-gui-linux.desktop", mode = "644" },
+    { source = "assets/logo.png", dest = "/usr/share/icons/hicolor/256x256/apps/openvpn-gui-linux.png", mode = "644" },
+]
 
 [dependencies]
 iced = { version = "0.14", features = ["tokio", "advanced", "image"] }
