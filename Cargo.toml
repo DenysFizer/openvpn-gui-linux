@@ -7,7 +7,7 @@ description = "A simple Linux GUI for OpenVPN"
 [dependencies]
 iced = { version = "0.14", features = ["tokio", "advanced", "image"] }
 tokio = { version = "1", features = ["full"] }
-rfd = "0.15"
+rfd = "0.17"
 base64 = "0.22"
 log = "0.4"
 env_logger = "0.11"
