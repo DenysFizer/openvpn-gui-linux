@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="assets/logo-large.png" alt="OpenVPN GUI for Linux" width="180"/>
-
 # OpenVPN GUI for Linux
 
 A simple, native desktop GUI for managing OpenVPN connections on Linux.
