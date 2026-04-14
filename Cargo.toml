@@ -1,0 +1,19 @@
+[package]
+name = "openvpn-gui-linux"
+version = "0.1.0"
+edition = "2024"
+description = "A simple Linux GUI for OpenVPN"
+
+[dependencies]
+iced = { version = "0.14", features = ["tokio", "advanced", "image"] }
+tokio = { version = "1", features = ["full"] }
+rfd = "0.15"
+base64 = "0.22"
+log = "0.4"
+env_logger = "0.11"
+thiserror = "2"
+tempfile = "3"
+chrono = "0.4"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+dirs = "6"
