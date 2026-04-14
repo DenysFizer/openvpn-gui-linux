@@ -39,6 +39,7 @@ pub struct App {
     config: Option<OvpnConfig>,
     username: String,
     password: String,
+    remember_credentials: bool,
     otp_response: String,
     vpn_state: VpnState,
     connection_info: Option<ConnectionInfo>,
@@ -60,15 +61,25 @@ impl App {
         // Load saved settings
         let saved = settings::load();
 
-        let password = saved.password();
+        let remember_credentials = saved.remember_credentials;
+        let password = if remember_credentials {
+            saved.password()
+        } else {
+            String::new()
+        };
         let config_path = saved.config_path.map(PathBuf::from);
-        let username = saved.username.unwrap_or_default();
+        let username = if remember_credentials {
+            saved.username.unwrap_or_default()
+        } else {
+            String::new()
+        };
 
         let mut app = Self {
             config_path: config_path.clone(),
             config: None,
             username,
             password,
+            remember_credentials,
             otp_response: String::new(),
             vpn_state: VpnState::Disconnected,
             connection_info: None,
@@ -108,12 +119,18 @@ impl App {
     fn save_settings(&self) {
         let mut s = settings::Settings::default();
         s.config_path = self.config_path.as_ref().map(|p| p.display().to_string());
-        s.username = if self.username.is_empty() {
-            None
+        s.remember_credentials = self.remember_credentials;
+        if self.remember_credentials {
+            s.username = if self.username.is_empty() {
+                None
+            } else {
+                Some(self.username.clone())
+            };
+            s.set_password(&self.password);
         } else {
-            Some(self.username.clone())
-        };
-        s.set_password(&self.password);
+            s.username = None;
+            s.password_b64 = None;
+        }
         settings::save(&s);
     }
 }
@@ -132,6 +149,7 @@ pub enum Message {
     UsernameChanged(String),
     PasswordChanged(String),
     OtpChanged(String),
+    RememberCredentialsToggled(bool),
 
     // Connection lifecycle
     Connect,
@@ -208,6 +226,11 @@ impl App {
             }
             Message::OtpChanged(val) => {
                 self.otp_response = val;
+                Task::none()
+            }
+            Message::RememberCredentialsToggled(val) => {
+                self.remember_credentials = val;
+                self.save_settings();
                 Task::none()
             }
             Message::Connect => {
@@ -438,6 +461,7 @@ impl App {
                 &self.username,
                 &self.password,
                 &self.otp_response,
+                self.remember_credentials,
                 &self.vpn_state,
                 &self.error_message,
             ),

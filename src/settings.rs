@@ -10,6 +10,8 @@ pub struct Settings {
     pub username: Option<String>,
     /// Password stored as base64 (not encryption — just avoids plaintext on disk)
     pub password_b64: Option<String>,
+    #[serde(default)]
+    pub remember_credentials: bool,
 }
 
 impl Settings {

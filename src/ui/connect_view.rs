@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, row, text, text_input};
+use iced::widget::{button, checkbox, column, container, row, text, text_input};
 use iced::{Element, Length};
 
 use crate::app::Message;
@@ -11,6 +11,7 @@ pub fn view<'a>(
     username: &str,
     password: &str,
     otp_response: &str,
+    remember_credentials: bool,
     vpn_state: &VpnState,
     error_message: &'a Option<String>,
 ) -> Element<'a, Message> {
@@ -90,6 +91,16 @@ pub fn view<'a>(
                 }
                 col = col.push(otp_input);
             }
+
+            let mut remember = checkbox(remember_credentials);
+            if inputs_enabled {
+                remember = remember.on_toggle(Message::RememberCredentialsToggled);
+            }
+            col = col.push(
+                row![remember, text("Remember me").size(14)]
+                    .spacing(8)
+                    .align_y(iced::Alignment::Center),
+            );
         }
     }
 
