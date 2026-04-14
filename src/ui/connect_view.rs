@@ -58,6 +58,20 @@ pub fn view<'a>(
     }
 
     // Credential fields (only when config requires auth)
+    let can_submit = config.is_some()
+        && !vpn_state.is_active()
+        && matches!(vpn_state, VpnState::Disconnected | VpnState::Error(_))
+        && config.as_ref().is_none_or(|c| {
+            if !c.needs_auth_user_pass {
+                return true;
+            }
+            !username.is_empty()
+                && !password.is_empty()
+                && c.static_challenge
+                    .as_ref()
+                    .is_none_or(|_| !otp_response.is_empty())
+        });
+
     if let Some(config) = config {
         if config.needs_auth_user_pass {
             col = col.push(text("Credentials").size(14));
@@ -68,6 +82,9 @@ pub fn view<'a>(
                 text_input("Username", username).padding(8);
             if inputs_enabled {
                 username_input = username_input.on_input(Message::UsernameChanged);
+                if can_submit {
+                    username_input = username_input.on_submit(Message::Connect);
+                }
             }
             col = col.push(username_input);
 
@@ -76,6 +93,9 @@ pub fn view<'a>(
                 .padding(8);
             if inputs_enabled {
                 password_input = password_input.on_input(Message::PasswordChanged);
+                if can_submit {
+                    password_input = password_input.on_submit(Message::Connect);
+                }
             }
             col = col.push(password_input);
 
@@ -88,6 +108,9 @@ pub fn view<'a>(
                         .padding(8);
                 if inputs_enabled {
                     otp_input = otp_input.on_input(Message::OtpChanged);
+                    if can_submit {
+                        otp_input = otp_input.on_submit(Message::Connect);
+                    }
                 }
                 col = col.push(otp_input);
             }
@@ -115,11 +138,7 @@ pub fn view<'a>(
     // Connect / Disconnect button
     let connect_btn = match vpn_state {
         VpnState::Disconnected | VpnState::Error(_) => {
-            let can_connect = config.is_some()
-                && config
-                    .as_ref()
-                    .is_none_or(|c| !c.needs_auth_user_pass || !username.is_empty());
-            if can_connect {
+            if can_submit {
                 button("Connect")
                     .on_press(Message::Connect)
                     .width(Length::Fill)
