@@ -1,4 +1,4 @@
-use iced::widget::{button, column, row, text, text_editor};
+use iced::widget::{button, column, container, row, text, text_editor};
 use iced::{Element, Length};
 
 use crate::app::Message;
@@ -8,13 +8,8 @@ pub fn view<'a>(
     show_logs: bool,
     log_count: usize,
 ) -> Element<'a, Message> {
-    let mut col = column![].spacing(4);
-
-    let toggle_label = if show_logs {
-        format!("Log Output ({log_count}) [-]")
-    } else {
-        format!("Log Output ({log_count}) [+]")
-    };
+    let chevron = if show_logs { "▾" } else { "▸" };
+    let toggle_label = format!("{chevron} Log Output ({log_count})");
 
     let header = row![
         button(text(toggle_label).size(13))
@@ -23,7 +18,7 @@ pub fn view<'a>(
             .style(button::text),
     ];
 
-    col = col.push(header);
+    let mut col = column![header].spacing(6);
 
     if show_logs {
         let editor = text_editor(log_content)
@@ -31,7 +26,13 @@ pub fn view<'a>(
             .height(Length::Fill)
             .size(11);
 
-        col = col.push(editor);
+        col = col.push(
+            container(editor)
+                .padding(10)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(container::rounded_box),
+        );
     }
 
     col.into()
