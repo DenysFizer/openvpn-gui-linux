@@ -22,9 +22,11 @@ pub fn run() -> iced::Result {
         }
     };
 
-    let mut window_settings = window::Settings::default();
-    window_settings.icon = icon;
-    window_settings.size = iced::Size::new(600.0, 700.0);
+    let window_settings = window::Settings {
+        icon,
+        size: iced::Size::new(600.0, 700.0),
+        ..window::Settings::default()
+    };
 
     iced::application(App::new, App::update, App::view)
         .title("OpenVPN Client")
@@ -109,7 +111,7 @@ impl App {
                 ));
             } else {
                 app.config_path = None;
-                app.error_message = Some(format!("Saved config file no longer exists"));
+                app.error_message = Some("Saved config file no longer exists".to_string());
             }
         }
 
@@ -117,20 +119,21 @@ impl App {
     }
 
     fn save_settings(&self) {
-        let mut s = settings::Settings::default();
-        s.config_path = self.config_path.as_ref().map(|p| p.display().to_string());
-        s.remember_credentials = self.remember_credentials;
-        if self.remember_credentials {
-            s.username = if self.username.is_empty() {
-                None
-            } else {
-                Some(self.username.clone())
-            };
-            s.set_password(&self.password);
+        let (username, password_b64) = if self.remember_credentials {
+            let username = (!self.username.is_empty()).then(|| self.username.clone());
+            let mut tmp = settings::Settings::default();
+            tmp.set_password(&self.password);
+            (username, tmp.password_b64)
         } else {
-            s.username = None;
-            s.password_b64 = None;
-        }
+            (None, None)
+        };
+
+        let s = settings::Settings {
+            config_path: self.config_path.as_ref().map(|p| p.display().to_string()),
+            username,
+            password_b64,
+            remember_credentials: self.remember_credentials,
+        };
         settings::save(&s);
     }
 }
@@ -314,11 +317,11 @@ impl App {
                 if self.vpn_state != VpnState::Disconnected {
                     self.vpn_state = VpnState::Disconnected;
                     self.connection_info = None;
-                    if let Some(code) = code {
-                        if code != 0 {
-                            self.error_message =
-                                Some(format!("OpenVPN process exited with code {code}"));
-                        }
+                    if let Some(code) = code
+                        && code != 0
+                    {
+                        self.error_message =
+                            Some(format!("OpenVPN process exited with code {code}"));
                     }
                 }
                 self.cleanup_connection_state();
@@ -486,14 +489,14 @@ impl App {
     fn subscription(&self) -> Subscription<Message> {
         let mut subs = vec![];
 
-        if let Some(socket_path) = &self.mgmt_socket_path {
-            if self.vpn_state.is_active() {
-                subs.push(crate::openvpn::management::management_subscription(
-                    socket_path.clone(),
-                    self.mgmt_cmd_rx.clone(),
-                    self.subscription_id,
-                ));
-            }
+        if let Some(socket_path) = &self.mgmt_socket_path
+            && self.vpn_state.is_active()
+        {
+            subs.push(crate::openvpn::management::management_subscription(
+                socket_path.clone(),
+                self.mgmt_cmd_rx.clone(),
+                self.subscription_id,
+            ));
         }
 
         if self.vpn_state == VpnState::Connected {

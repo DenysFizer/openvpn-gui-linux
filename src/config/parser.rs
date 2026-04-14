@@ -74,26 +74,21 @@ pub fn parse_ovpn(content: &str) -> Result<OvpnConfig, AppError> {
         }
 
         // Handle inline block boundaries
-        if let Some(block_name) = trimmed.strip_prefix("</") {
-            if let Some(block_name) = block_name.strip_suffix('>') {
-                match block_name {
-                    "ca" => config.has_inline_ca = true,
-                    "cert" => config.has_inline_cert = true,
-                    "key" => config.has_inline_key = true,
-                    _ => {}
-                }
-                inside_block = None;
-                continue;
+        if let Some(block_name) = trimmed.strip_prefix("</")
+            && let Some(block_name) = block_name.strip_suffix('>')
+        {
+            match block_name {
+                "ca" => config.has_inline_ca = true,
+                "cert" => config.has_inline_cert = true,
+                "key" => config.has_inline_key = true,
+                _ => {}
             }
+            inside_block = None;
+            continue;
         }
 
         if trimmed.starts_with('<') && trimmed.ends_with('>') && !trimmed.starts_with("</") {
-            let block_name = &trimmed[1..trimmed.len() - 1];
-            inside_block = match block_name {
-                "ca" | "cert" | "key" | "tls-auth" | "tls-crypt" | "extra-certs"
-                | "dh" | "pkcs12" | "secret" => Some(block_name),
-                _ => Some(block_name),
-            };
+            inside_block = Some(&trimmed[1..trimmed.len() - 1]);
             continue;
         }
 
@@ -122,10 +117,10 @@ pub fn parse_ovpn(content: &str) -> Result<OvpnConfig, AppError> {
                 }
             }
             "remote" => {
-                if let Some(args_str) = args {
-                    if let Some(server) = parse_remote(args_str) {
-                        config.remote_servers.push(server);
-                    }
+                if let Some(args_str) = args
+                    && let Some(server) = parse_remote(args_str)
+                {
+                    config.remote_servers.push(server);
                 }
             }
             "proto" => {
