@@ -15,5 +15,5 @@ thiserror = "2"
 tempfile = "3"
 chrono = "0.4"
 serde = { version = "1", features = ["derive"] }
-toml = "0.8"
+toml = "1.1"
 dirs = "6"
