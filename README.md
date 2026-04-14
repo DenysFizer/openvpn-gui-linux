@@ -45,7 +45,32 @@ Install OpenVPN on Debian/Ubuntu:
 sudo apt install openvpn
 ```
 
-## Build & Run
+## Installation
+
+Pick whichever matches your distro. All artifacts depend on `openvpn` being
+installed on the host.
+
+### Debian / Ubuntu
+
+```bash
+sudo apt install ./openvpn-gui-linux_<version>_amd64.deb
+```
+
+### Fedora / RHEL / openSUSE
+
+```bash
+sudo dnf install ./openvpn-gui-linux-<version>-1.x86_64.rpm
+```
+
+### Any Linux (portable tarball)
+
+```bash
+tar xzf openvpn-gui-linux-<version>-x86_64.tar.gz
+cd openvpn-gui-linux-<version>-x86_64
+sudo ./install.sh              # installs to /usr/local, override with PREFIX=~/.local
+```
+
+### Build from source
 
 ```bash
 git clone git@github.com:DenysFizer/openvpn-gui-linux.git
@@ -54,6 +79,15 @@ cargo run --release
 ```
 
 The compiled binary will be at `target/release/openvpn-gui-linux`.
+
+### Building the release artifacts yourself
+
+```bash
+cargo install cargo-deb cargo-generate-rpm   # one-time
+./scripts/package.sh                          # outputs to dist/
+```
+
+See [`packaging/README.md`](packaging/README.md) for details.
 
 ## Usage
 
@@ -92,6 +126,7 @@ cargo fmt            # format
 - [ ] System tray integration
 - [ ] Multiple simultaneous profiles
 - [ ] Flatpak / AppImage packaging
+- [ ] Arch Linux AUR package
 - [ ] Dark/light theme toggle
 - [ ] Per-profile auto-connect
 
