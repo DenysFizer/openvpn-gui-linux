@@ -1,0 +1,16 @@
+Source: openvpn-gui-linux
+Section: net
+Priority: optional
+Maintainer: Denys Fizer <fizerdenys@gmail.com>
+Build-Depends: debhelper-compat (= 13), cargo, rustc (>= 1.85)
+Standards-Version: 4.6.2
+Homepage: https://github.com/DenysFizer/openvpn-gui-linux
+
+Package: openvpn-gui-linux
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, openvpn, policykit-1 | pkexec
+Description: Simple Linux GUI for OpenVPN
+ A lightweight graphical front-end for the OpenVPN client, written in Rust
+ using the Iced toolkit. Wraps the openvpn CLI via its management interface
+ and provides a clean UI for connecting to, monitoring, and troubleshooting
+ VPN sessions.

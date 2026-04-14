@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=OpenVPN GUI
+GenericName=VPN Client
+Comment=A simple Linux GUI for OpenVPN
+Exec=openvpn-gui-linux
+Icon=openvpn-gui-linux
+Terminal=false
+Categories=Network;
+Keywords=VPN;OpenVPN;Network;
