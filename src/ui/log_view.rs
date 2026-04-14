@@ -28,10 +28,9 @@ pub fn view<'a>(
 
         col = col.push(
             container(editor)
-                .padding(10)
+                .padding(4)
                 .width(Length::Fill)
-                .height(Length::Fill)
-                .style(container::rounded_box),
+                .height(Length::Fill),
         );
     }
 

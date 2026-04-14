@@ -88,11 +88,7 @@ pub fn view<'a>(
         );
     }
 
-    container(col)
-        .padding([10, 14])
-        .width(Length::Fill)
-        .style(container::rounded_box)
-        .into()
+    container(col).padding([6, 4]).width(Length::Fill).into()
 }
 
 fn format_bytes(bytes: u64) -> String {

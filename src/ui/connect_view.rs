@@ -68,10 +68,7 @@ pub fn view<'a>(
         }
     }
 
-    let config_card = container(config_col)
-        .padding(16)
-        .width(Length::Fill)
-        .style(container::rounded_box);
+    let config_card = container(config_col).padding(4).width(Length::Fill);
 
     // Credential fields (only when config requires auth)
     let can_submit = config.is_some()
@@ -140,12 +137,7 @@ pub fn view<'a>(
                     .align_y(iced::Alignment::Center),
             );
 
-            let cred_card = container(cred_col)
-                .padding(16)
-                .width(Length::Fill)
-                .style(container::rounded_box);
-
-            col = col.push(cred_card);
+            col = col.push(container(cred_col).padding(4).width(Length::Fill));
         }
     }
 
