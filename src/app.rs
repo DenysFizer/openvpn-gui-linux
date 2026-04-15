@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use iced::widget::{column, container, text_editor};
-use iced::{Element, Length, Subscription, Task, Theme, window};
+use iced::{Element, Length, Size, Subscription, Task, Theme, window};
 
 use crate::config::{OvpnConfig, parse_ovpn};
 use crate::openvpn::management::MgmtCommand;
@@ -24,7 +24,8 @@ pub fn run() -> iced::Result {
 
     let window_settings = window::Settings {
         icon,
-        size: iced::Size::new(600.0, 700.0),
+        size: Size::new(600.0, 720.0),
+        min_size: Some(Size::new(520.0, 640.0)),
         ..window::Settings::default()
     };
 
@@ -56,6 +57,9 @@ pub struct App {
     mgmt_cmd_rx: Arc<Mutex<Option<tokio::sync::mpsc::UnboundedReceiver<MgmtCommand>>>>,
     openvpn_pid: Option<u32>,
     subscription_id: u64,
+
+    // UI state
+    spinner_frame: u8,
 }
 
 impl App {
@@ -94,6 +98,7 @@ impl App {
             mgmt_cmd_rx: Arc::new(Mutex::new(None)),
             openvpn_pid: None,
             subscription_id: 0,
+            spinner_frame: 0,
         };
 
         // Build startup tasks
@@ -174,6 +179,9 @@ pub enum Message {
     // UI
     ToggleLogs,
     LogEditorAction(text_editor::Action),
+    DismissError,
+    CopyLogs,
+    ClearLogs,
 
     // Timer
     Tick,
@@ -451,6 +459,19 @@ impl App {
                 Task::none()
             }
             Message::Tick => {
+                self.spinner_frame = self.spinner_frame.wrapping_add(1);
+                Task::none()
+            }
+            Message::DismissError => {
+                self.error_message = None;
+                Task::none()
+            }
+            Message::CopyLogs => {
+                iced::clipboard::write(self.log_content.text())
+            }
+            Message::ClearLogs => {
+                self.log_lines.clear();
+                self.log_content = text_editor::Content::new();
                 Task::none()
             }
         }
@@ -465,14 +486,19 @@ impl App {
                 &self.password,
                 &self.otp_response,
                 self.remember_credentials,
+                self.spinner_frame,
                 &self.vpn_state,
                 &self.error_message,
             ),
-            ui::status_bar::view(&self.vpn_state, &self.connection_info),
+            ui::status_bar::view(
+                &self.vpn_state,
+                &self.connection_info,
+                self.config.is_some(),
+            ),
             ui::log_view::view(&self.log_content, self.show_logs, self.log_lines.len()),
         ]
-        .spacing(10)
-        .padding(20)
+        .spacing(f32::from(ui::theme::SPACE_MD))
+        .padding(ui::theme::SPACE_LG)
         .width(Length::Fill)
         .height(Length::Fill);
 
@@ -499,8 +525,12 @@ impl App {
             ));
         }
 
+        // Tick drives both the connected-duration counter and the spinner glyph
+        // during transitional states.
         if self.vpn_state == VpnState::Connected {
             subs.push(iced::time::every(Duration::from_secs(1)).map(|_| Message::Tick));
+        } else if self.vpn_state.is_active() {
+            subs.push(iced::time::every(Duration::from_millis(120)).map(|_| Message::Tick));
         }
 
         Subscription::batch(subs)
