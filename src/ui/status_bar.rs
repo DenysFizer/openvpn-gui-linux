@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text};
+use iced::widget::{Space, column, container, row, text};
 use iced::{Element, Length};
 
 use crate::app::Message;
@@ -17,37 +17,45 @@ pub fn view<'a>(
         _ => theme::WARNING,
     };
 
-    let pill = container(
-        row![
-            text("●").size(14).color(state_color),
-            text(vpn_state.label().to_string())
-                .size(13)
-                .color(state_color),
-        ]
-        .spacing(f32::from(theme::SPACE_SM))
-        .align_y(iced::Alignment::Center),
-    )
-    .padding([4, 12])
-    .style(theme::status_pill(state_color));
-
-    let subtext: Option<iced::widget::Text> = match vpn_state {
-        VpnState::Disconnected if !has_config => {
-            Some(text("Select a configuration file to begin"))
+    let trailing: Element<'a, Message> = match (vpn_state, connection_info) {
+        (VpnState::Connected, Some(info)) => {
+            let duration = info
+                .connected_since
+                .map(|since| {
+                    let d = chrono::Local::now() - since;
+                    let s = d.num_seconds().max(0);
+                    format!("{:02}:{:02}:{:02}", s / 3600, (s % 3600) / 60, s % 60)
+                })
+                .unwrap_or_else(|| "--:--:--".into());
+            text(duration)
+                .size(12)
+                .color(theme::MUTED)
+                .font(theme::MONO)
+                .into()
         }
-        VpnState::Disconnected => Some(text("Ready to connect")),
-        VpnState::Error(_) => None,
-        _ if connection_info.is_none() => None,
-        _ => None,
+        (VpnState::Disconnected, _) => {
+            let msg = if has_config {
+                "Ready to connect"
+            } else {
+                "Select a profile to begin"
+            };
+            text(msg).size(12).color(theme::MUTED).into()
+        }
+        _ => Space::new().width(Length::Shrink).into(),
     };
 
-    let mut header = row![pill]
-        .spacing(f32::from(theme::SPACE_MD))
-        .align_y(iced::Alignment::Center);
-    if let Some(sub) = subtext {
-        header = header.push(sub.size(12).color(theme::MUTED));
-    }
+    let status_row = row![
+        text("●").size(12).color(state_color),
+        text(vpn_state.label().to_string())
+            .size(14)
+            .color(theme::SUBTLE),
+        Space::new().width(Length::Fill),
+        trailing,
+    ]
+    .spacing(f32::from(theme::SPACE_SM))
+    .align_y(iced::Alignment::Center);
 
-    let mut col = column![header].spacing(f32::from(theme::SPACE_SM));
+    let mut col = column![status_row].spacing(f32::from(theme::SPACE_SM));
 
     if let Some(info) = connection_info {
         col = col.push(details_grid(info));
@@ -60,61 +68,33 @@ pub fn view<'a>(
 }
 
 fn details_grid<'a>(info: &ConnectionInfo) -> Element<'a, Message> {
-    let ip_val = info.local_ip.clone().unwrap_or_else(|| "—".into());
-    let remote_val = match &info.remote_ip {
-        Some(ip) => {
-            let port = info
-                .remote_port
-                .map(|p| format!(":{p}"))
-                .unwrap_or_default();
-            format!("{ip}{port}")
-        }
-        None => "—".into(),
-    };
+    let local_ip = info.local_ip.clone().unwrap_or_else(|| "—".into());
+    let remote_ip = info.remote_ip.clone().unwrap_or_else(|| "—".into());
+    let download = format!("{} ↓", format_bytes(info.bytes_in));
+    let upload = format!("{} ↑", format_bytes(info.bytes_out));
 
-    let duration_val = info
-        .connected_since
-        .map(|since| {
-            let d = chrono::Local::now() - since;
-            let s = d.num_seconds().max(0);
-            format!("{:02}:{:02}:{:02}", s / 3600, (s % 3600) / 60, s % 60)
-        })
-        .unwrap_or_else(|| "—".into());
-
-    let traffic_val = format!(
-        "{} ↓ / {} ↑",
-        format_bytes(info.bytes_in),
-        format_bytes(info.bytes_out),
-    );
-
-    container(
-        column![
-            row![
-                kv("IP ADDRESS", ip_val),
-                kv("REMOTE", remote_val),
-            ]
-            .spacing(f32::from(theme::SPACE_LG)),
-            row![
-                kv("DURATION", duration_val),
-                kv("TRAFFIC", traffic_val),
-            ]
-            .spacing(f32::from(theme::SPACE_LG)),
-        ]
-        .spacing(f32::from(theme::SPACE_SM)),
-    )
-    .padding(theme::SPACE_MD)
+    column![
+        row![stat_card("Local IP", local_ip), stat_card("Remote IP", remote_ip),]
+            .spacing(f32::from(theme::SPACE_SM)),
+        row![stat_card("Download", download), stat_card("Upload", upload),]
+            .spacing(f32::from(theme::SPACE_SM)),
+    ]
+    .spacing(f32::from(theme::SPACE_SM))
     .width(Length::Fill)
-    .style(theme::card)
     .into()
 }
 
-fn kv<'a>(label: &'a str, value: String) -> Element<'a, Message> {
-    column![
-        text(label).size(10).color(theme::MUTED),
-        text(value).size(13).color(theme::SUBTLE),
-    ]
-    .spacing(2)
+fn stat_card<'a>(label: &str, value: String) -> Element<'a, Message> {
+    container(
+        column![
+            text(label.to_uppercase()).size(11).color(theme::MUTED),
+            text(value).size(14).color(theme::SUBTLE).font(theme::MONO),
+        ]
+        .spacing(4),
+    )
+    .padding([11, 14])
     .width(Length::Fill)
+    .style(theme::card_filled)
     .into()
 }
 

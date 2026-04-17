@@ -4,11 +4,93 @@ use iced::{Element, Length};
 use crate::app::Message;
 use crate::config::OvpnConfig;
 use crate::openvpn::VpnState;
-use crate::ui::theme;
+use crate::ui::theme::{self, ConnectButtonKind};
+
+pub fn profile_card<'a>(
+    config_path: &Option<std::path::PathBuf>,
+    config: &Option<OvpnConfig>,
+    inputs_enabled: bool,
+) -> Element<'a, Message> {
+    let icon = container(
+        text("\u{1F6E1}").size(20).color(theme::INFO_FG),
+    )
+    .width(Length::Fixed(40.0))
+    .height(Length::Fixed(40.0))
+    .padding(iced::Padding {
+        top: 6.0,
+        right: 0.0,
+        bottom: 0.0,
+        left: 0.0,
+    })
+    .align_x(iced::Alignment::Center)
+    .align_y(iced::Alignment::Center)
+    .style(theme::profile_icon);
+
+    let change_label = if config_path.is_some() {
+        "Change"
+    } else {
+        "Browse…"
+    };
+    let mut change_btn = button(text(change_label).size(13).color(theme::INFO_FG))
+        .padding([4, 8])
+        .style(button::text);
+    if inputs_enabled {
+        change_btn = change_btn.on_press(Message::SelectConfig);
+    }
+
+    let info: Element<'a, Message> = match config_path {
+        Some(path) => {
+            let filename = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.display().to_string());
+
+            let mut info_col = column![text(filename).size(15).color(theme::SUBTLE),]
+                .spacing(2)
+                .width(Length::Fill);
+
+            if let Some(cfg) = config
+                && let Some(server) = cfg.remote_servers.first()
+            {
+                let proto = cfg
+                    .protocol
+                    .as_deref()
+                    .or(server.protocol.as_deref())
+                    .unwrap_or("udp")
+                    .to_uppercase();
+                info_col = info_col.push(
+                    text(format!("{} · {} {}", server.host, proto, server.port))
+                        .size(12)
+                        .color(theme::MUTED),
+                );
+            }
+
+            info_col.into()
+        }
+        None => column![
+            text("No profile selected").size(15).color(theme::SUBTLE),
+            text("Pick a .ovpn file to get started")
+                .size(12)
+                .color(theme::MUTED),
+        ]
+        .spacing(2)
+        .width(Length::Fill)
+        .into(),
+    };
+
+    let body = row![icon, info, change_btn]
+        .spacing(f32::from(theme::SPACE_MD))
+        .align_y(iced::Alignment::Center);
+
+    container(body)
+        .padding([theme::SPACE_MD, theme::SPACE_MD + 2])
+        .width(Length::Fill)
+        .style(theme::card_filled)
+        .into()
+}
 
 #[allow(clippy::too_many_arguments)]
-pub fn view<'a>(
-    config_path: &Option<std::path::PathBuf>,
+pub fn connect_body<'a>(
     config: &Option<OvpnConfig>,
     username: &str,
     password: &str,
@@ -32,14 +114,14 @@ pub fn view<'a>(
                     .is_none_or(|_| !otp_response.is_empty())
         });
 
-    let mut col = column![config_card(config_path, config, inputs_enabled)]
+    let mut col = column![]
         .spacing(f32::from(theme::SPACE_MD))
         .width(Length::Fill);
 
     if let Some(cfg) = config
         && cfg.needs_auth_user_pass
     {
-        col = col.push(credentials_card(
+        col = col.push(credentials_block(
             cfg,
             username,
             password,
@@ -59,81 +141,12 @@ pub fn view<'a>(
     col.into()
 }
 
-fn config_card<'a>(
-    config_path: &Option<std::path::PathBuf>,
-    config: &Option<OvpnConfig>,
-    inputs_enabled: bool,
-) -> Element<'a, Message> {
-    let browse_label = if config_path.is_some() { "Change" } else { "Browse…" };
-
-    let mut browse = button(text(browse_label).size(13)).padding([6, 12]);
-    if inputs_enabled {
-        browse = browse.on_press(Message::SelectConfig).style(button::secondary);
-    } else {
-        browse = browse.style(button::secondary);
-    }
-
-    let body: Element<'a, Message> = match config_path {
-        Some(path) => {
-            let filename = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_else(|| path.display().to_string());
-            let full = path.display().to_string();
-
-            let mut info = column![
-                text(filename).size(16),
-                text(full).size(11).color(theme::MUTED),
-            ]
-            .spacing(2)
-            .width(Length::Fill);
-
-            if let Some(cfg) = config
-                && let Some(server) = cfg.remote_servers.first()
-            {
-                let proto = cfg
-                    .protocol
-                    .as_deref()
-                    .or(server.protocol.as_deref())
-                    .unwrap_or("udp")
-                    .to_uppercase();
-                info = info.push(
-                    text(format!("{}:{} · {}", server.host, server.port, proto))
-                        .size(12)
-                        .color(theme::SUBTLE),
-                );
-            }
-
-            row![info, browse]
-                .spacing(f32::from(theme::SPACE_MD))
-                .align_y(iced::Alignment::Center)
-                .into()
-        }
-        None => row![
-            column![
-                text("No configuration selected").size(15),
-                text("Pick a .ovpn file to get started")
-                    .size(12)
-                    .color(theme::MUTED),
-            ]
-            .spacing(2)
-            .width(Length::Fill),
-            browse,
-        ]
-        .spacing(f32::from(theme::SPACE_MD))
-        .align_y(iced::Alignment::Center)
-        .into(),
-    };
-
-    container(body)
-        .padding(theme::SPACE_MD)
-        .width(Length::Fill)
-        .style(theme::card)
-        .into()
+fn small_label<'a>(s: &str) -> Element<'a, Message> {
+    text(s.to_uppercase()).size(12).color(theme::MUTED).into()
 }
 
 #[allow(clippy::too_many_arguments)]
-fn credentials_card<'a>(
+fn credentials_block<'a>(
     config: &OvpnConfig,
     username: &str,
     password: &str,
@@ -142,54 +155,65 @@ fn credentials_card<'a>(
     inputs_enabled: bool,
     can_submit: bool,
 ) -> Element<'a, Message> {
-    let mut col = column![].spacing(f32::from(theme::SPACE_SM)).width(Length::Fill);
+    let mut col = column![]
+        .spacing(f32::from(theme::SPACE_MD))
+        .width(Length::Fill);
 
-    col = col.push(
-        text("Username")
-            .size(12)
-            .color(theme::MUTED),
-    );
-    let mut username_input = text_input("yourname", username).padding(10);
-    if inputs_enabled {
-        username_input = username_input.on_input(Message::UsernameChanged);
-        if can_submit {
-            username_input = username_input.on_submit(Message::Connect);
-        }
-    }
-    col = col.push(username_input);
+    col = col.push(field(
+        "Username",
+        {
+            let mut input = text_input("yourname", username).padding([10, 12]).size(15);
+            if inputs_enabled {
+                input = input.on_input(Message::UsernameChanged);
+                if can_submit {
+                    input = input.on_submit(Message::Connect);
+                }
+            }
+            input.into()
+        },
+    ));
 
-    col = col.push(
-        text("Password")
-            .size(12)
-            .color(theme::MUTED),
-    );
-    let mut password_input = text_input("••••••••", password)
-        .secure(true)
-        .padding(10);
-    if inputs_enabled {
-        password_input = password_input.on_input(Message::PasswordChanged);
-        if can_submit {
-            password_input = password_input.on_submit(Message::Connect);
-        }
-    }
-    col = col.push(password_input);
+    col = col.push(field(
+        "Password",
+        {
+            let mut input = text_input("\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}", password)
+                .secure(true)
+                .padding([10, 12])
+                .size(15);
+            if inputs_enabled {
+                input = input.on_input(Message::PasswordChanged);
+                if can_submit {
+                    input = input.on_submit(Message::Connect);
+                }
+            }
+            input.into()
+        },
+    ));
 
     if let Some(challenge) = &config.static_challenge {
-        col = col.push(
-            text(challenge.text.clone())
-                .size(12)
-                .color(theme::MUTED),
-        );
-        let mut otp_input = text_input("Authenticator code", otp_response)
+        let label = if challenge.text.is_empty() {
+            "Authenticator code".to_string()
+        } else {
+            challenge
+                .text
+                .trim()
+                .strip_prefix("Enter ")
+                .or_else(|| challenge.text.trim().strip_prefix("enter "))
+                .unwrap_or(challenge.text.trim())
+                .to_string()
+        };
+        let mut otp_input = text_input("000 000", otp_response)
             .secure(!challenge.echo)
-            .padding(10);
+            .padding([10, 12])
+            .size(17)
+            .font(theme::MONO);
         if inputs_enabled {
             otp_input = otp_input.on_input(Message::OtpChanged);
             if can_submit {
                 otp_input = otp_input.on_submit(Message::Connect);
             }
         }
-        col = col.push(otp_input);
+        col = col.push(field(&label, otp_input.into()));
     }
 
     let mut remember = checkbox(remember_credentials);
@@ -199,18 +223,23 @@ fn credentials_card<'a>(
     col = col.push(
         row![
             remember,
-            text("Remember me").size(13),
+            text("Remember credentials").size(14).color(theme::SUBTLE),
             Space::new().width(Length::Fill),
-            text("Stored locally").size(11).color(theme::MUTED),
+            container(text("Stored locally").size(11))
+                .padding([3, 8])
+                .style(theme::stored_badge),
         ]
         .spacing(f32::from(theme::SPACE_SM))
         .align_y(iced::Alignment::Center),
     );
 
-    container(col)
-        .padding(theme::SPACE_MD)
+    col.into()
+}
+
+fn field<'a>(label: &str, input: Element<'a, Message>) -> Element<'a, Message> {
+    column![small_label(label), input]
+        .spacing(f32::from(theme::SPACE_XS))
         .width(Length::Fill)
-        .style(theme::card)
         .into()
 }
 
@@ -284,14 +313,16 @@ fn connect_button<'a>(
     match vpn_state {
         VpnState::Disconnected | VpnState::Error(_) => {
             if can_submit {
-                base.on_press(Message::Connect).style(button::success).into()
+                base.on_press(Message::Connect)
+                    .style(theme::connect_button_style(ConnectButtonKind::Disconnected))
+                    .into()
             } else {
                 base.style(button::secondary).into()
             }
         }
         VpnState::Connected => base
             .on_press(Message::Disconnect)
-            .style(button::danger)
+            .style(theme::connect_button_style(ConnectButtonKind::Connected))
             .into(),
         _ => base.style(button::secondary).into(),
     }

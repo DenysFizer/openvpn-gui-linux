@@ -12,7 +12,7 @@ pub fn view<'a>(
     let chevron = if show_logs { "▾" } else { "▸" };
     let toggle_label = format!("{chevron} Log Output ({log_count})");
 
-    let toggle_btn = button(text(toggle_label).size(13))
+    let toggle_btn = button(text(toggle_label).size(14))
         .on_press(Message::ToggleLogs)
         .padding([4, 8])
         .style(button::text);
@@ -43,15 +43,17 @@ pub fn view<'a>(
         let editor = text_editor(log_content)
             .on_action(Message::LogEditorAction)
             .height(Length::Fill)
-            .size(11);
+            .size(12);
 
-        col = col.push(
-            container(editor)
-                .padding(theme::SPACE_SM)
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .style(theme::card),
-        );
+        col = col
+            .push(
+                container(editor)
+                    .padding(theme::SPACE_SM)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .style(theme::card),
+            )
+            .height(Length::Fill);
     }
 
     col.into()

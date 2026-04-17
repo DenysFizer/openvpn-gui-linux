@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use iced::widget::{column, container, text_editor};
+use iced::widget::{column, container, text, text_editor};
 use iced::{Element, Length, Size, Subscription, Task, Theme, window};
 
 use crate::config::{OvpnConfig, parse_ovpn};
@@ -10,6 +10,7 @@ use crate::openvpn::management::MgmtCommand;
 use crate::openvpn::{AuthRequest, ConnectionInfo, LogEntry, VpnState};
 use crate::settings;
 use crate::ui;
+use crate::ui::tab_bar::Tab;
 
 const ICON_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 
@@ -24,8 +25,8 @@ pub fn run() -> iced::Result {
 
     let window_settings = window::Settings {
         icon,
-        size: Size::new(600.0, 720.0),
-        min_size: Some(Size::new(520.0, 640.0)),
+        size: Size::new(460.0, 800.0),
+        min_size: Some(Size::new(420.0, 640.0)),
         ..window::Settings::default()
     };
 
@@ -60,6 +61,7 @@ pub struct App {
 
     // UI state
     spinner_frame: u8,
+    current_tab: Tab,
 }
 
 impl App {
@@ -99,6 +101,7 @@ impl App {
             openvpn_pid: None,
             subscription_id: 0,
             spinner_frame: 0,
+            current_tab: Tab::Connect,
         };
 
         // Build startup tasks
@@ -182,6 +185,7 @@ pub enum Message {
     DismissError,
     CopyLogs,
     ClearLogs,
+    TabChanged(Tab),
 
     // Timer
     Tick,
@@ -474,31 +478,50 @@ impl App {
                 self.log_content = text_editor::Content::new();
                 Task::none()
             }
+            Message::TabChanged(tab) => {
+                self.current_tab = tab;
+                Task::none()
+            }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
+        let inputs_enabled = !self.vpn_state.is_active();
+
+        let body: Element<'_, Message> = match self.current_tab {
+            Tab::Connect => column![
+                ui::connect_view::connect_body(
+                    &self.config,
+                    &self.username,
+                    &self.password,
+                    &self.otp_response,
+                    self.remember_credentials,
+                    self.spinner_frame,
+                    &self.vpn_state,
+                    &self.error_message,
+                ),
+                ui::status_bar::view(
+                    &self.vpn_state,
+                    &self.connection_info,
+                    self.config.is_some(),
+                ),
+                ui::log_view::view(&self.log_content, self.show_logs, self.log_lines.len()),
+            ]
+            .spacing(f32::from(ui::theme::SPACE_MD))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
+            Tab::Profiles => placeholder_tab("Profiles"),
+            Tab::Settings => placeholder_tab("Settings"),
+        };
+
         let content = column![
-            ui::connect_view::view(
-                &self.config_path,
-                &self.config,
-                &self.username,
-                &self.password,
-                &self.otp_response,
-                self.remember_credentials,
-                self.spinner_frame,
-                &self.vpn_state,
-                &self.error_message,
-            ),
-            ui::status_bar::view(
-                &self.vpn_state,
-                &self.connection_info,
-                self.config.is_some(),
-            ),
-            ui::log_view::view(&self.log_content, self.show_logs, self.log_lines.len()),
+            ui::connect_view::profile_card(&self.config_path, &self.config, inputs_enabled),
+            ui::tab_bar::view(self.current_tab),
+            body,
         ]
         .spacing(f32::from(ui::theme::SPACE_MD))
-        .padding(ui::theme::SPACE_LG)
+        .padding([ui::theme::SPACE_LG, ui::theme::SPACE_LG + 8])
         .width(Length::Fill)
         .height(Length::Fill);
 
@@ -540,6 +563,14 @@ impl App {
         self.mgmt_cmd_tx = None;
         self.openvpn_pid = None;
     }
+}
+
+fn placeholder_tab<'a>(name: &str) -> Element<'a, Message> {
+    container(text(format!("{name} coming soon")).size(13).color(ui::theme::MUTED))
+        .center_x(Length::Fill)
+        .center_y(Length::Fill)
+        .padding(ui::theme::SPACE_LG)
+        .into()
 }
 
 async fn pick_config_file() -> Option<PathBuf> {
