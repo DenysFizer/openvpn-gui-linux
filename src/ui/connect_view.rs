@@ -12,7 +12,7 @@ pub fn profile_card<'a>(
     inputs_enabled: bool,
 ) -> Element<'a, Message> {
     let icon = container(
-        text("\u{1F6E1}").size(20).color(theme::INFO_FG),
+        text("\u{1F6E1}").size(20).style(theme::text_on_primary),
     )
     .width(Length::Fixed(40.0))
     .height(Length::Fixed(40.0))
@@ -31,7 +31,7 @@ pub fn profile_card<'a>(
     } else {
         "Browse…"
     };
-    let mut change_btn = button(text(change_label).size(13).color(theme::INFO_FG))
+    let mut change_btn = button(text(change_label).size(13).style(theme::text_info_accent))
         .padding([4, 8])
         .style(button::text);
     if inputs_enabled {
@@ -45,7 +45,7 @@ pub fn profile_card<'a>(
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_else(|| path.display().to_string());
 
-            let mut info_col = column![text(filename).size(15).color(theme::SUBTLE),]
+            let mut info_col = column![text(filename).size(15).style(theme::text_subtle),]
                 .spacing(2)
                 .width(Length::Fill);
 
@@ -61,17 +61,17 @@ pub fn profile_card<'a>(
                 info_col = info_col.push(
                     text(format!("{} · {} {}", server.host, proto, server.port))
                         .size(12)
-                        .color(theme::MUTED),
+                        .style(theme::text_muted),
                 );
             }
 
             info_col.into()
         }
         None => column![
-            text("No profile selected").size(15).color(theme::SUBTLE),
+            text("No profile selected").size(15).style(theme::text_subtle),
             text("Pick a .ovpn file to get started")
                 .size(12)
-                .color(theme::MUTED),
+                .style(theme::text_muted),
         ]
         .spacing(2)
         .width(Length::Fill)
@@ -115,7 +115,7 @@ pub fn connect_body<'a>(
         });
 
     let mut col = column![]
-        .spacing(f32::from(theme::SPACE_MD))
+        .spacing(f32::from(theme::SPACE_LG))
         .width(Length::Fill);
 
     if let Some(cfg) = config
@@ -142,7 +142,7 @@ pub fn connect_body<'a>(
 }
 
 fn small_label<'a>(s: &str) -> Element<'a, Message> {
-    text(s.to_uppercase()).size(12).color(theme::MUTED).into()
+    text(s.to_uppercase()).size(12).style(theme::text_muted).into()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -156,7 +156,7 @@ fn credentials_block<'a>(
     can_submit: bool,
 ) -> Element<'a, Message> {
     let mut col = column![]
-        .spacing(f32::from(theme::SPACE_MD))
+        .spacing(f32::from(theme::SPACE_LG))
         .width(Length::Fill);
 
     col = col.push(field(
@@ -223,7 +223,7 @@ fn credentials_block<'a>(
     col = col.push(
         row![
             remember,
-            text("Remember credentials").size(14).color(theme::SUBTLE),
+            text("Remember credentials").size(14).style(theme::text_subtle),
             Space::new().width(Length::Fill),
             container(text("Stored locally").size(11))
                 .padding([3, 8])
@@ -246,8 +246,8 @@ fn field<'a>(label: &str, input: Element<'a, Message>) -> Element<'a, Message> {
 fn error_alert<'a>(err: &'a str) -> Element<'a, Message> {
     container(
         row![
-            text("⚠").size(14).color(theme::DANGER),
-            text(err).size(13).color(theme::DANGER).width(Length::Fill),
+            text("⚠").size(14).style(theme::text_danger),
+            text(err).size(13).style(theme::text_danger).width(Length::Fill),
             button(text("×").size(16))
                 .on_press(Message::DismissError)
                 .padding([0, 8])

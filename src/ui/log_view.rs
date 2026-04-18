@@ -6,18 +6,11 @@ use crate::ui::theme;
 
 pub fn view<'a>(
     log_content: &'a text_editor::Content,
-    show_logs: bool,
     log_count: usize,
 ) -> Element<'a, Message> {
-    let chevron = if show_logs { "▾" } else { "▸" };
-    let toggle_label = format!("{chevron} Log Output ({log_count})");
+    let title = text(format!("Log Output ({log_count})")).size(14);
 
-    let toggle_btn = button(text(toggle_label).size(14))
-        .on_press(Message::ToggleLogs)
-        .padding([4, 8])
-        .style(button::text);
-
-    let mut header = row![toggle_btn, Space::new().width(Length::Fill)]
+    let mut header = row![title, Space::new().width(Length::Fill)]
         .spacing(f32::from(theme::SPACE_SM))
         .align_y(iced::Alignment::Center);
 
@@ -37,24 +30,20 @@ pub fn view<'a>(
             );
     }
 
-    let mut col = column![header].spacing(f32::from(theme::SPACE_XS));
+    let editor = text_editor(log_content)
+        .on_action(Message::LogEditorAction)
+        .height(Length::Fill)
+        .size(12);
 
-    if show_logs {
-        let editor = text_editor(log_content)
-            .on_action(Message::LogEditorAction)
+    column![
+        header,
+        container(editor)
+            .padding(theme::SPACE_SM)
+            .width(Length::Fill)
             .height(Length::Fill)
-            .size(12);
-
-        col = col
-            .push(
-                container(editor)
-                    .padding(theme::SPACE_SM)
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .style(theme::card),
-            )
-            .height(Length::Fill);
-    }
-
-    col.into()
+            .style(theme::card),
+    ]
+    .spacing(f32::from(theme::SPACE_XS))
+    .height(Length::Fill)
+    .into()
 }

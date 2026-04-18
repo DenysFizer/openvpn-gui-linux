@@ -1,4 +1,4 @@
-use iced::widget::{button, container};
+use iced::widget::{button, container, text};
 use iced::{Background, Border, Color, Font, Theme};
 
 pub const SPACE_XS: u16 = 4;
@@ -6,34 +6,80 @@ pub const SPACE_SM: u16 = 8;
 pub const SPACE_MD: u16 = 12;
 pub const SPACE_LG: u16 = 16;
 
-pub const MUTED: [f32; 3] = [0.62, 0.62, 0.66];
-pub const SUBTLE: [f32; 3] = [0.82, 0.82, 0.85];
-pub const DANGER: [f32; 3] = [0.95, 0.42, 0.42];
-pub const SUCCESS: [f32; 3] = [0.40, 0.85, 0.50];
-pub const WARNING: [f32; 3] = [0.95, 0.78, 0.35];
-
-pub const INFO_BG: [f32; 3] = [0.047, 0.267, 0.486]; // #0C447C
-pub const INFO_FG: [f32; 3] = [0.710, 0.831, 0.957]; // #B5D4F4
-
-pub const BTN_CONNECTED_BG: [f32; 3] = [0.639, 0.176, 0.176]; // #A32D2D
-pub const BTN_CONNECTED_FG: [f32; 3] = [0.969, 0.757, 0.757]; // #F7C1C1
-pub const BTN_DISCONNECTED_BG: [f32; 3] = [0.047, 0.267, 0.486]; // #0C447C
-pub const BTN_DISCONNECTED_FG: [f32; 3] = [0.710, 0.831, 0.957]; // #B5D4F4
-
-pub const BG_SECONDARY: [f32; 3] = [0.110, 0.110, 0.135];
-pub const BG_LIFTED: [f32; 3] = [0.200, 0.200, 0.235];
-
 pub const MONO: Font = Font::MONOSPACE;
 
-fn rgb(c: [f32; 3]) -> Color {
-    Color::from_rgb(c[0], c[1], c[2])
+fn mix(a: Color, b: Color, t: f32) -> Color {
+    Color::from_rgb(
+        a.r * (1.0 - t) + b.r * t,
+        a.g * (1.0 - t) + b.g * t,
+        a.b * (1.0 - t) + b.b * t,
+    )
 }
 
-pub fn card(_theme: &Theme) -> container::Style {
+fn with_alpha(c: Color, a: f32) -> Color {
+    Color { a, ..c }
+}
+
+pub fn muted(theme: &Theme) -> Color {
+    let p = theme.extended_palette();
+    mix(p.background.base.text, p.background.base.color, 0.45)
+}
+
+pub fn subtle(theme: &Theme) -> Color {
+    let p = theme.extended_palette();
+    mix(p.background.base.text, p.background.base.color, 0.15)
+}
+
+pub fn danger(theme: &Theme) -> Color {
+    theme.extended_palette().danger.base.color
+}
+
+pub fn success(theme: &Theme) -> Color {
+    theme.extended_palette().success.base.color
+}
+
+pub fn warning(_theme: &Theme) -> Color {
+    Color::from_rgb(0.95, 0.78, 0.35)
+}
+
+pub fn info_accent(theme: &Theme) -> Color {
+    theme.extended_palette().primary.strong.color
+}
+
+pub fn disconnected_dot(theme: &Theme) -> Color {
+    mix(
+        theme.extended_palette().background.base.text,
+        theme.extended_palette().background.base.color,
+        0.55,
+    )
+}
+
+pub fn text_muted(theme: &Theme) -> text::Style {
+    text::Style { color: Some(muted(theme)) }
+}
+
+pub fn text_subtle(theme: &Theme) -> text::Style {
+    text::Style { color: Some(subtle(theme)) }
+}
+
+pub fn text_danger(theme: &Theme) -> text::Style {
+    text::Style { color: Some(danger(theme)) }
+}
+
+pub fn text_info_accent(theme: &Theme) -> text::Style {
+    text::Style { color: Some(info_accent(theme)) }
+}
+
+pub fn text_on_primary(theme: &Theme) -> text::Style {
+    text::Style { color: Some(theme.extended_palette().primary.base.text) }
+}
+
+pub fn card(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
     container::Style {
         background: None,
         border: Border {
-            color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+            color: with_alpha(p.background.strong.color, 0.6),
             width: 1.0,
             radius: 8.0.into(),
         },
@@ -41,11 +87,12 @@ pub fn card(_theme: &Theme) -> container::Style {
     }
 }
 
-pub fn card_filled(_theme: &Theme) -> container::Style {
+pub fn card_filled(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
     container::Style {
-        background: Some(Background::Color(rgb(BG_SECONDARY))),
+        background: Some(Background::Color(p.background.weak.color)),
         border: Border {
-            color: Color::from_rgba(1.0, 1.0, 1.0, 0.06),
+            color: with_alpha(p.background.strong.color, 0.4),
             width: 1.0,
             radius: 8.0.into(),
         },
@@ -53,11 +100,10 @@ pub fn card_filled(_theme: &Theme) -> container::Style {
     }
 }
 
-pub fn profile_icon(_theme: &Theme) -> container::Style {
+pub fn profile_icon(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
     container::Style {
-        background: Some(Background::Color(Color::from_rgba(
-            INFO_BG[0], INFO_BG[1], INFO_BG[2], 0.45,
-        ))),
+        background: Some(Background::Color(with_alpha(p.primary.base.color, 0.45))),
         border: Border {
             color: Color::TRANSPARENT,
             width: 0.0,
@@ -67,9 +113,10 @@ pub fn profile_icon(_theme: &Theme) -> container::Style {
     }
 }
 
-pub fn tab_row(_theme: &Theme) -> container::Style {
+pub fn tab_row(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
     container::Style {
-        background: Some(Background::Color(rgb(BG_SECONDARY))),
+        background: Some(Background::Color(p.background.weak.color)),
         border: Border {
             color: Color::TRANSPARENT,
             width: 0.0,
@@ -79,12 +126,13 @@ pub fn tab_row(_theme: &Theme) -> container::Style {
     }
 }
 
-pub fn tab_active(_theme: &Theme, _status: button::Status) -> button::Style {
+pub fn tab_active(theme: &Theme, _status: button::Status) -> button::Style {
+    let p = theme.extended_palette();
     button::Style {
-        background: Some(Background::Color(rgb(BG_LIFTED))),
-        text_color: Color::WHITE,
+        background: Some(Background::Color(p.background.strong.color)),
+        text_color: p.background.strong.text,
         border: Border {
-            color: Color::from_rgba(1.0, 1.0, 1.0, 0.08),
+            color: with_alpha(p.background.strong.color, 0.8),
             width: 1.0,
             radius: 6.0.into(),
         },
@@ -92,14 +140,14 @@ pub fn tab_active(_theme: &Theme, _status: button::Status) -> button::Style {
     }
 }
 
-pub fn tab_inactive(_theme: &Theme, status: button::Status) -> button::Style {
-    let text = match status {
-        button::Status::Hovered => rgb(SUBTLE),
-        _ => rgb(MUTED),
+pub fn tab_inactive(theme: &Theme, status: button::Status) -> button::Style {
+    let color = match status {
+        button::Status::Hovered => subtle(theme),
+        _ => muted(theme),
     };
     button::Style {
         background: None,
-        text_color: text,
+        text_color: color,
         border: Border {
             color: Color::TRANSPARENT,
             width: 0.0,
@@ -109,12 +157,13 @@ pub fn tab_inactive(_theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
-pub fn alert_error(_theme: &Theme) -> container::Style {
+pub fn alert_error(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
     container::Style {
-        background: Some(Background::Color(Color::from_rgba(0.95, 0.35, 0.35, 0.12))),
-        text_color: Some(Color::from_rgb(DANGER[0], DANGER[1], DANGER[2])),
+        background: Some(Background::Color(with_alpha(p.danger.base.color, 0.12))),
+        text_color: Some(p.danger.strong.color),
         border: Border {
-            color: Color::from_rgba(0.95, 0.35, 0.35, 0.55),
+            color: with_alpha(p.danger.base.color, 0.55),
             width: 1.0,
             radius: 6.0.into(),
         },
@@ -122,18 +171,152 @@ pub fn alert_error(_theme: &Theme) -> container::Style {
     }
 }
 
-pub fn stored_badge(_theme: &Theme) -> container::Style {
+pub fn stored_badge(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
     container::Style {
-        background: Some(Background::Color(Color::from_rgba(
-            SUCCESS[0], SUCCESS[1], SUCCESS[2], 0.14,
-        ))),
-        text_color: Some(rgb(SUCCESS)),
+        background: Some(Background::Color(with_alpha(p.success.base.color, 0.14))),
+        text_color: Some(p.success.base.color),
         border: Border {
             color: Color::TRANSPARENT,
             width: 0.0,
             radius: 20.0.into(),
         },
         ..container::Style::default()
+    }
+}
+
+pub fn badge_neutral(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
+    container::Style {
+        background: Some(Background::Color(p.background.weak.color)),
+        text_color: Some(muted(theme)),
+        border: Border {
+            color: with_alpha(p.background.strong.color, 0.4),
+            width: 1.0,
+            radius: 20.0.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
+pub fn profile_icon_muted(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
+    container::Style {
+        background: Some(Background::Color(p.background.weak.color)),
+        text_color: Some(muted(theme)),
+        border: Border {
+            color: Color::TRANSPARENT,
+            width: 0.0,
+            radius: 8.0.into(),
+        },
+        ..container::Style::default()
+    }
+}
+
+pub fn divider(theme: &Theme) -> container::Style {
+    let p = theme.extended_palette();
+    container::Style {
+        background: Some(Background::Color(with_alpha(p.background.strong.color, 0.4))),
+        ..container::Style::default()
+    }
+}
+
+pub fn import_button(theme: &Theme, status: button::Status) -> button::Style {
+    let p = theme.extended_palette();
+    let (bg, fg) = match status {
+        button::Status::Hovered => (
+            Some(Background::Color(p.background.weak.color)),
+            p.background.base.text,
+        ),
+        _ => (None, muted(theme)),
+    };
+    button::Style {
+        background: bg,
+        text_color: fg,
+        border: Border {
+            color: with_alpha(p.background.strong.color, 0.6),
+            width: 1.0,
+            radius: 6.0.into(),
+        },
+        ..button::Style::default()
+    }
+}
+
+pub fn profile_row_button(is_active: bool) -> impl Fn(&Theme, button::Status) -> button::Style {
+    move |theme, status| {
+        let p = theme.extended_palette();
+        if is_active {
+            button::Style {
+                background: Some(Background::Color(with_alpha(p.primary.base.color, 0.18))),
+                text_color: p.background.base.text,
+                border: Border {
+                    color: with_alpha(p.primary.base.color, 0.45),
+                    width: 1.0,
+                    radius: 8.0.into(),
+                },
+                ..button::Style::default()
+            }
+        } else {
+            let bg = match status {
+                button::Status::Hovered | button::Status::Pressed => {
+                    Some(Background::Color(p.background.weak.color))
+                }
+                _ => None,
+            };
+            button::Style {
+                background: bg,
+                text_color: p.background.base.text,
+                border: Border {
+                    color: match status {
+                        button::Status::Hovered => with_alpha(p.background.strong.color, 0.4),
+                        _ => Color::TRANSPARENT,
+                    },
+                    width: 1.0,
+                    radius: 8.0.into(),
+                },
+                ..button::Style::default()
+            }
+        }
+    }
+}
+
+pub fn action_danger_outline(theme: &Theme, status: button::Status) -> button::Style {
+    let p = theme.extended_palette();
+    let bg = match status {
+        button::Status::Hovered | button::Status::Pressed => {
+            Some(Background::Color(with_alpha(p.danger.base.color, 0.12)))
+        }
+        _ => None,
+    };
+    button::Style {
+        background: bg,
+        text_color: p.danger.base.color,
+        border: Border {
+            color: with_alpha(p.danger.base.color, 0.55),
+            width: 1.0,
+            radius: 6.0.into(),
+        },
+        ..button::Style::default()
+    }
+}
+
+pub fn action_neutral(theme: &Theme, status: button::Status) -> button::Style {
+    let p = theme.extended_palette();
+    let bg = match status {
+        button::Status::Hovered | button::Status::Pressed => {
+            Some(Background::Color(p.background.weak.color))
+        }
+        _ => Some(Background::Color(p.background.base.color)),
+    };
+    button::Style {
+        background: bg,
+        text_color: p.background.base.text,
+        border: Border {
+            color: with_alpha(p.background.strong.color, 0.6),
+            width: 1.0,
+            radius: 6.0.into(),
+        },
+        ..button::Style::default()
     }
 }
 
@@ -146,11 +329,12 @@ pub enum ConnectButtonKind {
 pub fn connect_button_style(
     kind: ConnectButtonKind,
 ) -> impl Fn(&Theme, button::Status) -> button::Style {
-    let (bg, fg) = match kind {
-        ConnectButtonKind::Connected => (BTN_CONNECTED_BG, BTN_CONNECTED_FG),
-        ConnectButtonKind::Disconnected => (BTN_DISCONNECTED_BG, BTN_DISCONNECTED_FG),
-    };
-    move |_theme, status| {
+    move |theme, status| {
+        let p = theme.extended_palette();
+        let (bg, fg) = match kind {
+            ConnectButtonKind::Connected => (p.danger.strong.color, p.danger.strong.text),
+            ConnectButtonKind::Disconnected => (p.primary.strong.color, p.primary.strong.text),
+        };
         let alpha = match status {
             button::Status::Hovered => 1.0,
             button::Status::Pressed => 0.88,
@@ -158,8 +342,8 @@ pub fn connect_button_style(
             button::Status::Active => 0.95,
         };
         button::Style {
-            background: Some(Background::Color(Color::from_rgba(bg[0], bg[1], bg[2], alpha))),
-            text_color: rgb(fg),
+            background: Some(Background::Color(with_alpha(bg, alpha))),
+            text_color: fg,
             border: Border {
                 color: Color::TRANSPARENT,
                 width: 0.0,

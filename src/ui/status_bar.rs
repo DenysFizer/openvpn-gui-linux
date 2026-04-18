@@ -1,20 +1,28 @@
 use iced::widget::{Space, column, container, row, text};
-use iced::{Element, Length};
+use iced::{Element, Length, Theme};
 
 use crate::app::Message;
 use crate::openvpn::{ConnectionInfo, VpnState};
 use crate::ui::theme;
+
+#[derive(Copy, Clone)]
+enum DotKind {
+    Success,
+    Danger,
+    Disconnected,
+    Warning,
+}
 
 pub fn view<'a>(
     vpn_state: &VpnState,
     connection_info: &Option<ConnectionInfo>,
     has_config: bool,
 ) -> Element<'a, Message> {
-    let state_color = match vpn_state {
-        VpnState::Connected => theme::SUCCESS,
-        VpnState::Error(_) => theme::DANGER,
-        VpnState::Disconnected => [0.55, 0.55, 0.60],
-        _ => theme::WARNING,
+    let dot = match vpn_state {
+        VpnState::Connected => DotKind::Success,
+        VpnState::Error(_) => DotKind::Danger,
+        VpnState::Disconnected => DotKind::Disconnected,
+        _ => DotKind::Warning,
     };
 
     let trailing: Element<'a, Message> = match (vpn_state, connection_info) {
@@ -29,7 +37,7 @@ pub fn view<'a>(
                 .unwrap_or_else(|| "--:--:--".into());
             text(duration)
                 .size(12)
-                .color(theme::MUTED)
+                .style(theme::text_muted)
                 .font(theme::MONO)
                 .into()
         }
@@ -39,16 +47,23 @@ pub fn view<'a>(
             } else {
                 "Select a profile to begin"
             };
-            text(msg).size(12).color(theme::MUTED).into()
+            text(msg).size(12).style(theme::text_muted).into()
         }
         _ => Space::new().width(Length::Shrink).into(),
     };
 
     let status_row = row![
-        text("●").size(12).color(state_color),
+        text("●").size(12).style(move |t: &Theme| iced::widget::text::Style {
+            color: Some(match dot {
+                DotKind::Success => theme::success(t),
+                DotKind::Danger => theme::danger(t),
+                DotKind::Disconnected => theme::disconnected_dot(t),
+                DotKind::Warning => theme::warning(t),
+            })
+        }),
         text(vpn_state.label().to_string())
             .size(14)
-            .color(theme::SUBTLE),
+            .style(theme::text_subtle),
         Space::new().width(Length::Fill),
         trailing,
     ]
@@ -87,8 +102,8 @@ fn details_grid<'a>(info: &ConnectionInfo) -> Element<'a, Message> {
 fn stat_card<'a>(label: &str, value: String) -> Element<'a, Message> {
     container(
         column![
-            text(label.to_uppercase()).size(11).color(theme::MUTED),
-            text(value).size(14).color(theme::SUBTLE).font(theme::MONO),
+            text(label.to_uppercase()).size(11).style(theme::text_muted),
+            text(value).size(14).style(theme::text_subtle).font(theme::MONO),
         ]
         .spacing(4),
     )

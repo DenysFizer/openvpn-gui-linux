@@ -15,6 +15,8 @@ pub struct OvpnConfig {
     pub tls_mode: Option<TlsMode>,
     pub protocol: Option<String>,
     pub is_client: bool,
+    pub cipher: Option<String>,
+    pub auth: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,6 +63,8 @@ pub fn parse_ovpn(content: &str) -> Result<OvpnConfig, AppError> {
         tls_mode: None,
         protocol: None,
         is_client: false,
+        cipher: None,
+        auth: None,
     };
 
     let mut inside_block: Option<&str> = None;
@@ -160,6 +164,31 @@ pub fn parse_ovpn(content: &str) -> Result<OvpnConfig, AppError> {
                     config.tls_mode = Some(TlsMode::TlsCrypt {
                         key_path: key_path.to_string(),
                     });
+                }
+            }
+            "cipher" => {
+                if let Some(val) = args {
+                    let first = val.split_whitespace().next().unwrap_or(val);
+                    config.cipher = Some(first.to_string());
+                }
+            }
+            "data-ciphers" => {
+                // `data-ciphers` is a colon-separated priority list;
+                // only set if not already populated by a `cipher` directive.
+                if config.cipher.is_none()
+                    && let Some(val) = args
+                    && let Some(first) = val.split(':').next()
+                {
+                    let trimmed = first.trim();
+                    if !trimmed.is_empty() {
+                        config.cipher = Some(trimmed.to_string());
+                    }
+                }
+            }
+            "auth" => {
+                if let Some(val) = args {
+                    let first = val.split_whitespace().next().unwrap_or(val);
+                    config.auth = Some(first.to_string());
                 }
             }
             _ => {}
@@ -418,6 +447,43 @@ remote vpn.example.com
         assert!(!config.is_client);
         assert!(config.remote_servers.is_empty());
         assert!(!config.needs_auth_user_pass);
+    }
+
+    #[test]
+    fn test_parse_cipher_and_auth() {
+        let content = r#"
+client
+remote vpn.example.com 1194
+cipher AES-256-GCM
+auth SHA512
+"#;
+        let config = parse_ovpn(content).unwrap();
+        assert_eq!(config.cipher.as_deref(), Some("AES-256-GCM"));
+        assert_eq!(config.auth.as_deref(), Some("SHA512"));
+    }
+
+    #[test]
+    fn test_parse_data_ciphers_fallback() {
+        let content = r#"
+client
+remote vpn.example.com 1194
+data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305
+"#;
+        let config = parse_ovpn(content).unwrap();
+        assert_eq!(config.cipher.as_deref(), Some("AES-256-GCM"));
+    }
+
+    #[test]
+    fn test_parse_cipher_wins_over_data_ciphers() {
+        // A `cipher` directive takes precedence regardless of declaration order.
+        let content = r#"
+client
+remote vpn.example.com 1194
+data-ciphers AES-128-GCM:CHACHA20-POLY1305
+cipher AES-256-GCM
+"#;
+        let config = parse_ovpn(content).unwrap();
+        assert_eq!(config.cipher.as_deref(), Some("AES-256-GCM"));
     }
 
     #[test]

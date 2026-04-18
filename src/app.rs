@@ -1,4 +1,5 @@
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -8,7 +9,7 @@ use iced::{Element, Length, Size, Subscription, Task, Theme, window};
 use crate::config::{OvpnConfig, parse_ovpn};
 use crate::openvpn::management::MgmtCommand;
 use crate::openvpn::{AuthRequest, ConnectionInfo, LogEntry, VpnState};
-use crate::settings;
+use crate::settings::{self, Profile};
 use crate::ui;
 use crate::ui::tab_bar::Tab;
 
@@ -25,8 +26,8 @@ pub fn run() -> iced::Result {
 
     let window_settings = window::Settings {
         icon,
-        size: Size::new(460.0, 800.0),
-        min_size: Some(Size::new(420.0, 640.0)),
+        size: Size::new(460.0, 720.0),
+        min_size: Some(Size::new(420.0, 560.0)),
         ..window::Settings::default()
     };
 
@@ -49,7 +50,7 @@ pub struct App {
     connection_info: Option<ConnectionInfo>,
     log_lines: Vec<LogEntry>,
     log_content: text_editor::Content,
-    show_logs: bool,
+    enable_logs: bool,
     error_message: Option<String>,
 
     // Management socket state
@@ -62,6 +63,13 @@ pub struct App {
     // UI state
     spinner_frame: u8,
     current_tab: Tab,
+    theme: Theme,
+
+    // Profile management
+    profiles: Vec<Profile>,
+    selected_profile_idx: Option<usize>,
+    parsed_profiles: HashMap<PathBuf, OvpnConfig>,
+    rename_state: Option<(usize, String)>,
 }
 
 impl App {
@@ -70,16 +78,27 @@ impl App {
         let saved = settings::load();
 
         let remember_credentials = saved.remember_credentials;
+        let enable_logs = saved.enable_logs;
         let password = if remember_credentials {
             saved.password()
         } else {
             String::new()
         };
         let config_path = saved.config_path.map(PathBuf::from);
+        let profiles = saved.profiles;
+        let selected_profile_idx = config_path.as_ref().and_then(|path| {
+            profiles
+                .iter()
+                .position(|p| Path::new(&p.path) == path.as_path())
+        });
         let username = if remember_credentials {
             saved.username.unwrap_or_default()
         } else {
             String::new()
+        };
+        let theme = match saved.theme.as_str() {
+            "Light" => Theme::Light,
+            _ => Theme::Dark,
         };
 
         let mut app = Self {
@@ -93,7 +112,7 @@ impl App {
             connection_info: None,
             log_lines: Vec::new(),
             log_content: text_editor::Content::new(),
-            show_logs: false,
+            enable_logs,
             error_message: None,
             mgmt_socket_path: None,
             mgmt_cmd_tx: None,
@@ -102,6 +121,11 @@ impl App {
             subscription_id: 0,
             spinner_frame: 0,
             current_tab: Tab::Connect,
+            theme,
+            profiles,
+            selected_profile_idx,
+            parsed_profiles: HashMap::new(),
+            rename_state: None,
         };
 
         // Build startup tasks
@@ -123,6 +147,16 @@ impl App {
             }
         }
 
+        // Pre-parse every known profile so the list can show host/proto/cipher.
+        for profile in &app.profiles {
+            let path = PathBuf::from(&profile.path);
+            if path.exists() {
+                tasks.push(Task::perform(load_profile_meta(path), |(p, r)| {
+                    Message::ProfileMetaLoaded(p, r)
+                }));
+            }
+        }
+
         (app, Task::batch(tasks))
     }
 
@@ -136,13 +170,36 @@ impl App {
             (None, None)
         };
 
+        let theme_name = match self.theme {
+            Theme::Light => "Light",
+            _ => "Dark",
+        };
         let s = settings::Settings {
             config_path: self.config_path.as_ref().map(|p| p.display().to_string()),
             username,
             password_b64,
             remember_credentials: self.remember_credentials,
+            enable_logs: self.enable_logs,
+            theme: theme_name.to_string(),
+            profiles: self.profiles.clone(),
         };
         settings::save(&s);
+    }
+
+    fn upsert_profile(&mut self, path: PathBuf) -> usize {
+        if let Some(idx) = self
+            .profiles
+            .iter()
+            .position(|p| Path::new(&p.path) == path.as_path())
+        {
+            return idx;
+        }
+        self.profiles.push(Profile {
+            path: path.display().to_string(),
+            display_name: None,
+            last_used: None,
+        });
+        self.profiles.len() - 1
     }
 }
 
@@ -161,6 +218,8 @@ pub enum Message {
     PasswordChanged(String),
     OtpChanged(String),
     RememberCredentialsToggled(bool),
+    EnableLogsToggled(bool),
+    ThemeChanged(Theme),
 
     // Connection lifecycle
     Connect,
@@ -180,12 +239,21 @@ pub enum Message {
     MgmtHoldRequest,
 
     // UI
-    ToggleLogs,
     LogEditorAction(text_editor::Action),
     DismissError,
     CopyLogs,
     ClearLogs,
     TabChanged(Tab),
+
+    // Profile management
+    ProfileSelected(usize),
+    ProfileConnectRequested(usize),
+    ProfileRenameRequested(usize),
+    ProfileRenameChanged(usize, String),
+    ProfileRenameSubmitted(usize),
+    ProfileRenameCancelled,
+    ProfileRemoved(usize),
+    ProfileMetaLoaded(PathBuf, Result<OvpnConfig, String>),
 
     // Timer
     Tick,
@@ -208,6 +276,8 @@ impl App {
             }
             Message::ConfigSelected(path) => {
                 if let Some(path) = path {
+                    let idx = self.upsert_profile(path.clone());
+                    self.selected_profile_idx = Some(idx);
                     self.config_path = Some(path.clone());
                     self.error_message = None;
                     self.save_settings();
@@ -219,6 +289,9 @@ impl App {
             Message::ConfigParsed(result) => {
                 match result {
                     Ok(config) => {
+                        if let Some(path) = &self.config_path {
+                            self.parsed_profiles.insert(path.clone(), config.clone());
+                        }
                         self.config = Some(config);
                         self.error_message = None;
                     }
@@ -248,17 +321,36 @@ impl App {
                 self.save_settings();
                 Task::none()
             }
+            Message::EnableLogsToggled(val) => {
+                self.enable_logs = val;
+                if !val && self.current_tab == Tab::Logs {
+                    self.current_tab = Tab::Connect;
+                }
+                self.save_settings();
+                Task::none()
+            }
+            Message::ThemeChanged(theme) => {
+                self.theme = theme;
+                self.save_settings();
+                Task::none()
+            }
             Message::Connect => {
                 let config_path = match &self.config_path {
                     Some(p) => p.clone(),
                     None => return Task::none(),
                 };
 
+                if let Some(idx) = self.selected_profile_idx
+                    && let Some(profile) = self.profiles.get_mut(idx)
+                {
+                    profile.last_used = Some(chrono::Local::now().timestamp());
+                    self.save_settings();
+                }
+
                 self.error_message = None;
                 self.vpn_state = VpnState::Spawning;
                 self.log_lines.clear();
                 self.log_content = text_editor::Content::new();
-                self.show_logs = true;
                 self.connection_info = None;
 
                 let socket_path = crate::openvpn::manager::generate_socket_path();
@@ -450,10 +542,6 @@ impl App {
                 self.cleanup_connection_state();
                 Task::none()
             }
-            Message::ToggleLogs => {
-                self.show_logs = !self.show_logs;
-                Task::none()
-            }
             Message::LogEditorAction(action) => {
                 // Only allow selection (read-only), not editing
                 if action.is_edit() {
@@ -482,6 +570,104 @@ impl App {
                 self.current_tab = tab;
                 Task::none()
             }
+            Message::ProfileSelected(idx) => {
+                let Some(profile) = self.profiles.get(idx) else {
+                    return Task::none();
+                };
+                let path = PathBuf::from(&profile.path);
+                self.selected_profile_idx = Some(idx);
+                self.config_path = Some(path.clone());
+                self.rename_state = None;
+                self.config = self.parsed_profiles.get(&path).cloned();
+                self.save_settings();
+
+                if self.config.is_none() && path.exists() {
+                    Task::perform(load_and_parse_config(path), Message::ConfigParsed)
+                } else {
+                    Task::none()
+                }
+            }
+            Message::ProfileConnectRequested(idx) => {
+                let select_task = self.update(Message::ProfileSelected(idx));
+                self.current_tab = Tab::Connect;
+                select_task
+            }
+            Message::ProfileRenameRequested(idx) => {
+                if let Some(profile) = self.profiles.get(idx) {
+                    let initial = profile
+                        .display_name
+                        .clone()
+                        .filter(|n| !n.is_empty())
+                        .unwrap_or_else(|| {
+                            PathBuf::from(&profile.path)
+                                .file_name()
+                                .map(|n| n.to_string_lossy().into_owned())
+                                .unwrap_or_else(|| profile.path.clone())
+                        });
+                    self.rename_state = Some((idx, initial));
+                }
+                Task::none()
+            }
+            Message::ProfileRenameChanged(idx, value) => {
+                if matches!(self.rename_state, Some((i, _)) if i == idx) {
+                    self.rename_state = Some((idx, value));
+                }
+                Task::none()
+            }
+            Message::ProfileRenameSubmitted(idx) => {
+                if let Some((state_idx, value)) = self.rename_state.take()
+                    && state_idx == idx
+                    && let Some(profile) = self.profiles.get_mut(idx)
+                {
+                    let trimmed = value.trim();
+                    profile.display_name = if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(trimmed.to_string())
+                    };
+                    self.save_settings();
+                }
+                Task::none()
+            }
+            Message::ProfileRenameCancelled => {
+                self.rename_state = None;
+                Task::none()
+            }
+            Message::ProfileRemoved(idx) => {
+                if idx >= self.profiles.len() {
+                    return Task::none();
+                }
+                let removed = self.profiles.remove(idx);
+                let removed_path = PathBuf::from(&removed.path);
+                self.parsed_profiles.remove(&removed_path);
+                self.rename_state = None;
+
+                let was_selected = self.selected_profile_idx == Some(idx);
+                self.selected_profile_idx = match self.selected_profile_idx {
+                    Some(sel) if sel == idx => None,
+                    Some(sel) if sel > idx => Some(sel - 1),
+                    other => other,
+                };
+
+                if was_selected {
+                    self.config_path = None;
+                    self.config = None;
+                    if self.vpn_state.is_active() {
+                        // Disconnect before clearing — keep UI consistent.
+                        // Spawn disconnect via re-dispatch.
+                        self.save_settings();
+                        return self.update(Message::Disconnect);
+                    }
+                }
+                self.save_settings();
+                Task::none()
+            }
+            Message::ProfileMetaLoaded(path, result) => {
+                if let Ok(config) = result {
+                    self.parsed_profiles.insert(path, config);
+                }
+                Task::none()
+            }
         }
     }
 
@@ -505,23 +691,29 @@ impl App {
                     &self.connection_info,
                     self.config.is_some(),
                 ),
-                ui::log_view::view(&self.log_content, self.show_logs, self.log_lines.len()),
             ]
-            .spacing(f32::from(ui::theme::SPACE_MD))
+            .spacing(f32::from(ui::theme::SPACE_LG))
             .width(Length::Fill)
             .height(Length::Fill)
             .into(),
-            Tab::Profiles => placeholder_tab("Profiles"),
-            Tab::Settings => placeholder_tab("Settings"),
+            Tab::Profiles => ui::profiles_view::view(
+                &self.profiles,
+                &self.parsed_profiles,
+                self.selected_profile_idx,
+                &self.vpn_state,
+                self.rename_state.as_ref().map(|(i, s)| (*i, s.as_str())),
+            ),
+            Tab::Logs => ui::log_view::view(&self.log_content, self.log_lines.len()),
+            Tab::Settings => settings_tab(self.enable_logs, &self.theme),
         };
 
         let content = column![
             ui::connect_view::profile_card(&self.config_path, &self.config, inputs_enabled),
-            ui::tab_bar::view(self.current_tab),
+            ui::tab_bar::view(self.current_tab, self.enable_logs),
             body,
         ]
-        .spacing(f32::from(ui::theme::SPACE_MD))
-        .padding([ui::theme::SPACE_LG, ui::theme::SPACE_LG + 8])
+        .spacing(f32::from(ui::theme::SPACE_LG))
+        .padding([ui::theme::SPACE_LG + 4, ui::theme::SPACE_LG + 8])
         .width(Length::Fill)
         .height(Length::Fill);
 
@@ -532,7 +724,7 @@ impl App {
     }
 
     fn theme(&self) -> Theme {
-        Theme::Dark
+        self.theme.clone()
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -565,11 +757,52 @@ impl App {
     }
 }
 
-fn placeholder_tab<'a>(name: &str) -> Element<'a, Message> {
-    container(text(format!("{name} coming soon")).size(13).color(ui::theme::MUTED))
-        .center_x(Length::Fill)
-        .center_y(Length::Fill)
-        .padding(ui::theme::SPACE_LG)
+fn settings_tab<'a>(enable_logs: bool, current_theme: &Theme) -> Element<'a, Message> {
+    use iced::widget::toggler;
+
+    let light_active = matches!(current_theme, Theme::Light);
+
+    let theme_toggle = toggler(light_active)
+        .label("Light theme")
+        .on_toggle(|enabled| {
+            Message::ThemeChanged(if enabled { Theme::Light } else { Theme::Dark })
+        })
+        .size(22)
+        .text_size(14);
+    let theme_help = text("Switch between dark and light color schemes.")
+        .size(12)
+        .style(ui::theme::text_muted);
+
+    let appearance_card = container(
+        column![theme_toggle, theme_help]
+            .spacing(f32::from(ui::theme::SPACE_XS))
+            .width(Length::Fill),
+    )
+    .padding(ui::theme::SPACE_MD)
+    .width(Length::Fill)
+    .style(ui::theme::card);
+
+    let logs_toggle = toggler(enable_logs)
+        .label("Enable log output")
+        .on_toggle(Message::EnableLogsToggled)
+        .size(22)
+        .text_size(14);
+    let logs_help = text("Show a Logs tab for viewing OpenVPN output.")
+        .size(12)
+        .style(ui::theme::text_muted);
+
+    let logs_card = container(
+        column![logs_toggle, logs_help]
+            .spacing(f32::from(ui::theme::SPACE_XS))
+            .width(Length::Fill),
+    )
+    .padding(ui::theme::SPACE_MD)
+    .width(Length::Fill)
+    .style(ui::theme::card);
+
+    column![appearance_card, logs_card]
+        .spacing(f32::from(ui::theme::SPACE_MD))
+        .width(Length::Fill)
         .into()
 }
 
@@ -589,4 +822,9 @@ async fn load_and_parse_config(path: PathBuf) -> Result<OvpnConfig, String> {
         .map_err(|e| format!("Could not read config file: {e}"))?;
 
     parse_ovpn(&content).map_err(|e| e.to_string())
+}
+
+async fn load_profile_meta(path: PathBuf) -> (PathBuf, Result<OvpnConfig, String>) {
+    let result = load_and_parse_config(path.clone()).await;
+    (path, result)
 }

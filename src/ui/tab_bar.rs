@@ -8,6 +8,7 @@ use crate::ui::theme;
 pub enum Tab {
     Connect,
     Profiles,
+    Logs,
     Settings,
 }
 
@@ -16,22 +17,24 @@ impl Tab {
         match self {
             Tab::Connect => "Connect",
             Tab::Profiles => "Profiles",
+            Tab::Logs => "Logs",
             Tab::Settings => "Settings",
         }
     }
 }
 
-pub fn view<'a>(active: Tab) -> Element<'a, Message> {
-    let segments = [Tab::Connect, Tab::Profiles, Tab::Settings]
-        .into_iter()
-        .map(|tab| segment(tab, active));
+pub fn view<'a>(active: Tab, enable_logs: bool) -> Element<'a, Message> {
+    let mut tabs: Vec<Tab> = vec![Tab::Connect, Tab::Profiles, Tab::Settings];
+    if enable_logs {
+        tabs.push(Tab::Logs);
+    }
 
     let mut r = row![]
         .spacing(2)
         .width(Length::Fill)
         .align_y(iced::Alignment::Center);
-    for seg in segments {
-        r = r.push(seg);
+    for tab in tabs {
+        r = r.push(segment(tab, active));
     }
 
     container(r)
