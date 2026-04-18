@@ -29,15 +29,9 @@ A simple, native desktop GUI for managing OpenVPN connections on Linux.
 
 ## Screenshots
 
-<p align="center">
-  <img src="assets/screenshots/connect.png"  alt="Connect tab"  width="280" />
-  <img src="assets/screenshots/profiles.png" alt="Profiles tab" width="280" />
-  <img src="assets/screenshots/settings.png" alt="Settings tab" width="280" />
-</p>
-
-<p align="center">
-  <sub>Connect · Profiles · Settings</sub>
-</p>
+| Connect | Profiles | Settings |
+| :---: | :---: | :---: |
+| ![Connect tab](assets/screenshots/connect.png) | ![Profiles tab](assets/screenshots/profiles.png) | ![Settings tab](assets/screenshots/settings.png) |
 
 ## Requirements
 
