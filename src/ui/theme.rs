@@ -55,23 +55,33 @@ pub fn disconnected_dot(theme: &Theme) -> Color {
 }
 
 pub fn text_muted(theme: &Theme) -> text::Style {
-    text::Style { color: Some(muted(theme)) }
+    text::Style {
+        color: Some(muted(theme)),
+    }
 }
 
 pub fn text_subtle(theme: &Theme) -> text::Style {
-    text::Style { color: Some(subtle(theme)) }
+    text::Style {
+        color: Some(subtle(theme)),
+    }
 }
 
 pub fn text_danger(theme: &Theme) -> text::Style {
-    text::Style { color: Some(danger(theme)) }
+    text::Style {
+        color: Some(danger(theme)),
+    }
 }
 
 pub fn text_info_accent(theme: &Theme) -> text::Style {
-    text::Style { color: Some(info_accent(theme)) }
+    text::Style {
+        color: Some(info_accent(theme)),
+    }
 }
 
 pub fn text_on_primary(theme: &Theme) -> text::Style {
-    text::Style { color: Some(theme.extended_palette().primary.base.text) }
+    text::Style {
+        color: Some(theme.extended_palette().primary.base.text),
+    }
 }
 
 pub fn card(theme: &Theme) -> container::Style {
@@ -216,7 +226,10 @@ pub fn profile_icon_muted(theme: &Theme) -> container::Style {
 pub fn divider(theme: &Theme) -> container::Style {
     let p = theme.extended_palette();
     container::Style {
-        background: Some(Background::Color(with_alpha(p.background.strong.color, 0.4))),
+        background: Some(Background::Color(with_alpha(
+            p.background.strong.color,
+            0.4,
+        ))),
         ..container::Style::default()
     }
 }

@@ -240,7 +240,10 @@ fn parse_remote(args: &str) -> Option<RemoteServer> {
     let parts: Vec<&str> = args.split_whitespace().collect();
 
     let host = parts.first()?.to_string();
-    let port = parts.get(1).and_then(|p| p.parse::<u16>().ok()).unwrap_or(1194);
+    let port = parts
+        .get(1)
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(1194);
     let protocol = parts.get(2).map(|s| s.to_string());
 
     Some(RemoteServer {

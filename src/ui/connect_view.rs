@@ -11,20 +11,18 @@ pub fn profile_card<'a>(
     config: &Option<OvpnConfig>,
     inputs_enabled: bool,
 ) -> Element<'a, Message> {
-    let icon = container(
-        text("\u{1F6E1}").size(20).style(theme::text_on_primary),
-    )
-    .width(Length::Fixed(40.0))
-    .height(Length::Fixed(40.0))
-    .padding(iced::Padding {
-        top: 6.0,
-        right: 0.0,
-        bottom: 0.0,
-        left: 0.0,
-    })
-    .align_x(iced::Alignment::Center)
-    .align_y(iced::Alignment::Center)
-    .style(theme::profile_icon);
+    let icon = container(text("\u{1F6E1}").size(20).style(theme::text_on_primary))
+        .width(Length::Fixed(40.0))
+        .height(Length::Fixed(40.0))
+        .padding(iced::Padding {
+            top: 6.0,
+            right: 0.0,
+            bottom: 0.0,
+            left: 0.0,
+        })
+        .align_x(iced::Alignment::Center)
+        .align_y(iced::Alignment::Center)
+        .style(theme::profile_icon);
 
     let change_label = if config_path.is_some() {
         "Change"
@@ -68,7 +66,9 @@ pub fn profile_card<'a>(
             info_col.into()
         }
         None => column![
-            text("No profile selected").size(15).style(theme::text_subtle),
+            text("No profile selected")
+                .size(15)
+                .style(theme::text_subtle),
             text("Pick a .ovpn file to get started")
                 .size(12)
                 .style(theme::text_muted),
@@ -142,7 +142,10 @@ pub fn connect_body<'a>(
 }
 
 fn small_label<'a>(s: &str) -> Element<'a, Message> {
-    text(s.to_uppercase()).size(12).style(theme::text_muted).into()
+    text(s.to_uppercase())
+        .size(12)
+        .style(theme::text_muted)
+        .into()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -159,36 +162,33 @@ fn credentials_block<'a>(
         .spacing(f32::from(theme::SPACE_LG))
         .width(Length::Fill);
 
-    col = col.push(field(
-        "Username",
-        {
-            let mut input = text_input("yourname", username).padding([10, 12]).size(15);
-            if inputs_enabled {
-                input = input.on_input(Message::UsernameChanged);
-                if can_submit {
-                    input = input.on_submit(Message::Connect);
-                }
+    col = col.push(field("Username", {
+        let mut input = text_input("yourname", username).padding([10, 12]).size(15);
+        if inputs_enabled {
+            input = input.on_input(Message::UsernameChanged);
+            if can_submit {
+                input = input.on_submit(Message::Connect);
             }
-            input.into()
-        },
-    ));
+        }
+        input.into()
+    }));
 
-    col = col.push(field(
-        "Password",
-        {
-            let mut input = text_input("\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}", password)
-                .secure(true)
-                .padding([10, 12])
-                .size(15);
-            if inputs_enabled {
-                input = input.on_input(Message::PasswordChanged);
-                if can_submit {
-                    input = input.on_submit(Message::Connect);
-                }
+    col = col.push(field("Password", {
+        let mut input = text_input(
+            "\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}\u{2022}",
+            password,
+        )
+        .secure(true)
+        .padding([10, 12])
+        .size(15);
+        if inputs_enabled {
+            input = input.on_input(Message::PasswordChanged);
+            if can_submit {
+                input = input.on_submit(Message::Connect);
             }
-            input.into()
-        },
-    ));
+        }
+        input.into()
+    }));
 
     if let Some(challenge) = &config.static_challenge {
         let label = if challenge.text.is_empty() {
@@ -223,7 +223,9 @@ fn credentials_block<'a>(
     col = col.push(
         row![
             remember,
-            text("Remember credentials").size(14).style(theme::text_subtle),
+            text("Remember credentials")
+                .size(14)
+                .style(theme::text_subtle),
             Space::new().width(Length::Fill),
             container(text("Stored locally").size(11))
                 .padding([3, 8])
@@ -247,7 +249,10 @@ fn error_alert<'a>(err: &'a str) -> Element<'a, Message> {
     container(
         row![
             text("⚠").size(14).style(theme::text_danger),
-            text(err).size(13).style(theme::text_danger).width(Length::Fill),
+            text(err)
+                .size(13)
+                .style(theme::text_danger)
+                .width(Length::Fill),
             button(text("×").size(16))
                 .on_press(Message::DismissError)
                 .padding([0, 8])

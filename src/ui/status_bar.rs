@@ -53,14 +53,16 @@ pub fn view<'a>(
     };
 
     let status_row = row![
-        text("●").size(12).style(move |t: &Theme| iced::widget::text::Style {
-            color: Some(match dot {
-                DotKind::Success => theme::success(t),
-                DotKind::Danger => theme::danger(t),
-                DotKind::Disconnected => theme::disconnected_dot(t),
-                DotKind::Warning => theme::warning(t),
-            })
-        }),
+        text("●")
+            .size(12)
+            .style(move |t: &Theme| iced::widget::text::Style {
+                color: Some(match dot {
+                    DotKind::Success => theme::success(t),
+                    DotKind::Danger => theme::danger(t),
+                    DotKind::Disconnected => theme::disconnected_dot(t),
+                    DotKind::Warning => theme::warning(t),
+                })
+            }),
         text(vpn_state.label().to_string())
             .size(14)
             .style(theme::text_subtle),
@@ -89,8 +91,11 @@ fn details_grid<'a>(info: &ConnectionInfo) -> Element<'a, Message> {
     let upload = format!("{} ↑", format_bytes(info.bytes_out));
 
     column![
-        row![stat_card("Local IP", local_ip), stat_card("Remote IP", remote_ip),]
-            .spacing(f32::from(theme::SPACE_SM)),
+        row![
+            stat_card("Local IP", local_ip),
+            stat_card("Remote IP", remote_ip),
+        ]
+        .spacing(f32::from(theme::SPACE_SM)),
         row![stat_card("Download", download), stat_card("Upload", upload),]
             .spacing(f32::from(theme::SPACE_SM)),
     ]
@@ -103,7 +108,10 @@ fn stat_card<'a>(label: &str, value: String) -> Element<'a, Message> {
     container(
         column![
             text(label.to_uppercase()).size(11).style(theme::text_muted),
-            text(value).size(14).style(theme::text_subtle).font(theme::MONO),
+            text(value)
+                .size(14)
+                .style(theme::text_subtle)
+                .font(theme::MONO),
         ]
         .spacing(4),
     )

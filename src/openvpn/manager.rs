@@ -6,10 +6,7 @@ use crate::error::AppError;
 
 /// Spawn the OpenVPN process via pkexec with management socket.
 /// Returns (child PID, socket path).
-pub async fn spawn_openvpn(
-    config_path: &Path,
-    socket_path: &Path,
-) -> Result<u32, AppError> {
+pub async fn spawn_openvpn(config_path: &Path, socket_path: &Path) -> Result<u32, AppError> {
     // Ensure the socket file does not already exist
     let _ = tokio::fs::remove_file(socket_path).await;
 
@@ -32,9 +29,9 @@ pub async fn spawn_openvpn(
         .spawn()
         .map_err(|e| AppError::ProcessSpawn(format!("Failed to launch pkexec: {e}")))?;
 
-    let pid = child.id().ok_or_else(|| {
-        AppError::ProcessSpawn("Failed to get process ID".to_string())
-    })?;
+    let pid = child
+        .id()
+        .ok_or_else(|| AppError::ProcessSpawn("Failed to get process ID".to_string()))?;
 
     // Spawn a background task to wait for the child process to exit
     tokio::spawn(async move {

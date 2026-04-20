@@ -271,9 +271,7 @@ impl App {
                 }
                 Task::none()
             }
-            Message::SelectConfig => {
-                Task::perform(pick_config_file(), Message::ConfigSelected)
-            }
+            Message::SelectConfig => Task::perform(pick_config_file(), Message::ConfigSelected),
             Message::ConfigSelected(path) => {
                 if let Some(path) = path {
                     let idx = self.upsert_profile(path.clone());
@@ -481,9 +479,8 @@ impl App {
                             });
                         }
                         AuthRequest::PrivateKey => {
-                            let _ = tx.send(MgmtCommand::SendPrivateKeyPassphrase(
-                                self.password.clone(),
-                            ));
+                            let _ = tx
+                                .send(MgmtCommand::SendPrivateKeyPassphrase(self.password.clone()));
                         }
                     }
                 }
@@ -503,9 +500,8 @@ impl App {
                     entry.message
                 );
                 // Append to text_editor content
-                self.log_content.perform(text_editor::Action::Move(
-                    text_editor::Motion::DocumentEnd,
-                ));
+                self.log_content
+                    .perform(text_editor::Action::Move(text_editor::Motion::DocumentEnd));
                 self.log_content
                     .perform(text_editor::Action::Edit(text_editor::Edit::Paste(
                         line.into(),
@@ -516,7 +512,10 @@ impl App {
                 }
                 Task::none()
             }
-            Message::MgmtByteCount { bytes_in, bytes_out } => {
+            Message::MgmtByteCount {
+                bytes_in,
+                bytes_out,
+            } => {
                 if let Some(info) = &mut self.connection_info {
                     info.bytes_in = bytes_in;
                     info.bytes_out = bytes_out;
@@ -558,9 +557,7 @@ impl App {
                 self.error_message = None;
                 Task::none()
             }
-            Message::CopyLogs => {
-                iced::clipboard::write(self.log_content.text())
-            }
+            Message::CopyLogs => iced::clipboard::write(self.log_content.text()),
             Message::ClearLogs => {
                 self.log_lines.clear();
                 self.log_content = text_editor::Content::new();

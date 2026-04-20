@@ -4,10 +4,7 @@ use iced::{Element, Length};
 use crate::app::Message;
 use crate::ui::theme;
 
-pub fn view<'a>(
-    log_content: &'a text_editor::Content,
-    log_count: usize,
-) -> Element<'a, Message> {
+pub fn view<'a>(log_content: &'a text_editor::Content, log_count: usize) -> Element<'a, Message> {
     let title = text(format!("Log Output ({log_count})")).size(14);
 
     let mut header = row![title, Space::new().width(Length::Fill)]

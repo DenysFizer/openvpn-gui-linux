@@ -5,8 +5,8 @@ use std::time::Duration;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use chrono::Local;
-use iced::futures::{SinkExt, Stream};
 use iced::Subscription;
+use iced::futures::{SinkExt, Stream};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 use tokio::sync::mpsc;
@@ -41,10 +41,7 @@ pub fn management_subscription(
     cmd_rx: Arc<Mutex<Option<mpsc::UnboundedReceiver<MgmtCommand>>>>,
     id: u64,
 ) -> Subscription<Message> {
-    let sub_id = MgmtSubscriptionId {
-        socket_path,
-        id,
-    };
+    let sub_id = MgmtSubscriptionId { socket_path, id };
 
     struct MgmtRecipe {
         id: MgmtSubscriptionId,
@@ -66,92 +63,89 @@ pub fn management_subscription(
             let socket_path = self.id.socket_path;
             let cmd_rx = self.cmd_rx;
 
-            Box::pin(iced::stream::channel(100, move |mut output: iced::futures::channel::mpsc::Sender<Self::Output>| async move {
-                // Take the receiver out of the shared slot
-                let mut cmd_receiver = cmd_rx
-                    .lock()
-                    .unwrap()
-                    .take()
-                    .expect("cmd_rx already taken");
+            Box::pin(iced::stream::channel(
+                100,
+                move |mut output: iced::futures::channel::mpsc::Sender<Self::Output>| async move {
+                    // Take the receiver out of the shared slot
+                    let mut cmd_receiver =
+                        cmd_rx.lock().unwrap().take().expect("cmd_rx already taken");
 
-                // Retry connecting to the socket
-                let stream = loop {
-                    match UnixStream::connect(&socket_path).await {
-                        Ok(s) => break s,
-                        Err(_) => {
-                            tokio::time::sleep(Duration::from_millis(200)).await;
-                        }
-                    }
-                };
-
-                let _ = output.send(Message::MgmtConnected).await;
-
-                let (reader, mut writer) = stream.into_split();
-                let mut lines = BufReader::new(reader).lines();
-
-                // Send initial commands
-                let init = "state on all\nlog on all\nbytecount 5\n";
-                if let Err(e) = writer.write_all(init.as_bytes()).await {
-                    let _ = output
-                        .send(Message::MgmtError(format!(
-                            "Failed to send init commands: {e}"
-                        )))
-                        .await;
-                    return;
-                }
-
-                loop {
-                    tokio::select! {
-                        line_result = lines.next_line() => {
-                            match line_result {
-                                Ok(Some(line)) => {
-                                    if let Some(msg) = parse_management_line(&line) {
-                                        let _ = output.send(msg).await;
-                                    }
-                                }
-                                Ok(None) => {
-                                    let _ = output.send(Message::MgmtDisconnected).await;
-                                    return;
-                                }
-                                Err(e) => {
-                                    let _ = output
-                                        .send(Message::MgmtError(format!(
-                                            "Socket read error: {e}"
-                                        )))
-                                        .await;
-                                    let _ = output.send(Message::MgmtDisconnected).await;
-                                    return;
-                                }
+                    // Retry connecting to the socket
+                    let stream = loop {
+                        match UnixStream::connect(&socket_path).await {
+                            Ok(s) => break s,
+                            Err(_) => {
+                                tokio::time::sleep(Duration::from_millis(200)).await;
                             }
                         }
-                        cmd = cmd_receiver.recv() => {
-                            match cmd {
-                                Some(command) => {
-                                    let data = format_command(&command);
-                                    if let Err(e) = writer.write_all(data.as_bytes()).await {
+                    };
+
+                    let _ = output.send(Message::MgmtConnected).await;
+
+                    let (reader, mut writer) = stream.into_split();
+                    let mut lines = BufReader::new(reader).lines();
+
+                    // Send initial commands
+                    let init = "state on all\nlog on all\nbytecount 5\n";
+                    if let Err(e) = writer.write_all(init.as_bytes()).await {
+                        let _ = output
+                            .send(Message::MgmtError(format!(
+                                "Failed to send init commands: {e}"
+                            )))
+                            .await;
+                        return;
+                    }
+
+                    loop {
+                        tokio::select! {
+                            line_result = lines.next_line() => {
+                                match line_result {
+                                    Ok(Some(line)) => {
+                                        if let Some(msg) = parse_management_line(&line) {
+                                            let _ = output.send(msg).await;
+                                        }
+                                    }
+                                    Ok(None) => {
+                                        let _ = output.send(Message::MgmtDisconnected).await;
+                                        return;
+                                    }
+                                    Err(e) => {
                                         let _ = output
                                             .send(Message::MgmtError(format!(
-                                                "Failed to send command: {e}"
+                                                "Socket read error: {e}"
                                             )))
                                             .await;
+                                        let _ = output.send(Message::MgmtDisconnected).await;
+                                        return;
                                     }
                                 }
-                                None => {
-                                    // Command channel closed
-                                    return;
+                            }
+                            cmd = cmd_receiver.recv() => {
+                                match cmd {
+                                    Some(command) => {
+                                        let data = format_command(&command);
+                                        if let Err(e) = writer.write_all(data.as_bytes()).await {
+                                            let _ = output
+                                                .send(Message::MgmtError(format!(
+                                                    "Failed to send command: {e}"
+                                                )))
+                                                .await;
+                                        }
+                                    }
+                                    None => {
+                                        // Command channel closed
+                                        return;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            }))
+                },
+            ))
         }
     }
 
-    iced::advanced::subscription::from_recipe(MgmtRecipe {
-        id: sub_id,
-        cmd_rx,
-    })
+    iced::advanced::subscription::from_recipe(MgmtRecipe { id: sub_id, cmd_rx })
 }
 
 /// Format a MgmtCommand into the wire protocol string(s) to send
@@ -305,7 +299,10 @@ fn parse_bytecount_line(rest: &str) -> Option<Message> {
     let (in_str, out_str) = rest.split_once(',')?;
     let bytes_in = in_str.trim().parse::<u64>().ok()?;
     let bytes_out = out_str.trim().parse::<u64>().ok()?;
-    Some(Message::MgmtByteCount { bytes_in, bytes_out })
+    Some(Message::MgmtByteCount {
+        bytes_in,
+        bytes_out,
+    })
 }
 
 fn non_empty(s: &str) -> Option<&str> {
@@ -372,8 +369,7 @@ mod tests {
 
     #[test]
     fn test_parse_password_request_basic() {
-        let msg =
-            parse_management_line(">PASSWORD:Need 'Auth' username/password").unwrap();
+        let msg = parse_management_line(">PASSWORD:Need 'Auth' username/password").unwrap();
         match msg {
             Message::MgmtPasswordRequest(AuthRequest::UserPass) => {}
             other => panic!("Expected UserPass request, got {other:?}"),
@@ -417,8 +413,8 @@ mod tests {
 
     #[test]
     fn test_parse_log_line() {
-        let msg = parse_management_line(">LOG:1618000000,I,Initialization Sequence Completed")
-            .unwrap();
+        let msg =
+            parse_management_line(">LOG:1618000000,I,Initialization Sequence Completed").unwrap();
         match msg {
             Message::MgmtLogLine(entry) => {
                 assert_eq!(entry.level, LogLevel::Info);

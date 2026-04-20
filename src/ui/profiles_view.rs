@@ -37,23 +37,24 @@ pub fn view<'a>(
             .push(detail_card(idx, profile, parsed, vpn_state, rename_state));
     }
 
-    scrollable(col.padding([0, 0]))
-        .height(Length::Fill)
-        .into()
+    scrollable(col.padding([0, 0])).height(Length::Fill).into()
 }
 
 fn empty_state<'a>() -> Element<'a, Message> {
-    let message = text("No profiles yet")
-        .size(14)
-        .style(theme::text_subtle);
+    let message = text("No profiles yet").size(14).style(theme::text_subtle);
     let hint = text("Import an .ovpn file to get started.")
         .size(12)
         .style(theme::text_muted);
 
-    let inner = column![message, hint, Space::new().height(Length::Fixed(8.0)), import_button()]
-        .spacing(f32::from(theme::SPACE_XS))
-        .align_x(iced::Alignment::Center)
-        .width(Length::Fill);
+    let inner = column![
+        message,
+        hint,
+        Space::new().height(Length::Fixed(8.0)),
+        import_button()
+    ]
+    .spacing(f32::from(theme::SPACE_XS))
+    .align_x(iced::Alignment::Center)
+    .width(Length::Fill);
 
     container(inner)
         .center_x(Length::Fill)
@@ -74,12 +75,13 @@ fn profile_list<'a>(
     selected: Option<usize>,
     vpn_state: &VpnState,
 ) -> Element<'a, Message> {
-    let mut col = column![].spacing(f32::from(theme::SPACE_XS)).width(Length::Fill);
+    let mut col = column![]
+        .spacing(f32::from(theme::SPACE_XS))
+        .width(Length::Fill);
 
     for (idx, profile) in profiles.iter().enumerate() {
         let is_active = Some(idx) == selected;
-        let is_connected =
-            is_active && matches!(vpn_state, VpnState::Connected);
+        let is_connected = is_active && matches!(vpn_state, VpnState::Connected);
         col = col.push(profile_row(idx, profile, parsed, is_active, is_connected));
     }
 
@@ -183,14 +185,12 @@ fn detail_card<'a>(
     let config = parsed.get(&path);
 
     let header_title: Element<'a, Message> = match rename_state {
-        Some((rename_idx, value)) if rename_idx == idx => {
-            text_input("Profile name", value)
-                .on_input(move |v| Message::ProfileRenameChanged(idx, v))
-                .on_submit(Message::ProfileRenameSubmitted(idx))
-                .padding([4, 8])
-                .size(13)
-                .into()
-        }
+        Some((rename_idx, value)) if rename_idx == idx => text_input("Profile name", value)
+            .on_input(move |v| Message::ProfileRenameChanged(idx, v))
+            .on_submit(Message::ProfileRenameSubmitted(idx))
+            .padding([4, 8])
+            .size(13)
+            .into(),
         _ => text(display_name(profile, &path))
             .size(13)
             .style(theme::text_subtle)
@@ -212,9 +212,7 @@ fn detail_card<'a>(
             .style(theme::profile_icon),
         column![
             header_title,
-            text(profile.path.clone())
-                .size(11)
-                .style(theme::text_muted),
+            text(profile.path.clone()).size(11).style(theme::text_muted),
         ]
         .spacing(2)
         .width(Length::Fill),
@@ -223,9 +221,14 @@ fn detail_card<'a>(
     .align_y(iced::Alignment::Center);
 
     let (host, port, proto) = match config.and_then(|c| {
-        c.remote_servers
-            .first()
-            .map(|s| (s.host.clone(), s.port, s.protocol.clone(), c.protocol.clone()))
+        c.remote_servers.first().map(|s| {
+            (
+                s.host.clone(),
+                s.port,
+                s.protocol.clone(),
+                c.protocol.clone(),
+            )
+        })
     }) {
         Some((h, p, server_proto, file_proto)) => {
             let proto = file_proto
@@ -281,7 +284,10 @@ fn detail_row<'a>(key: &str, value: String) -> Element<'a, Message> {
         row![
             text(key.to_string()).size(11).style(theme::text_muted),
             Space::new().width(Length::Fill),
-            text(value).size(11).font(theme::MONO).style(theme::text_subtle),
+            text(value)
+                .size(11)
+                .font(theme::MONO)
+                .style(theme::text_subtle),
         ]
         .align_y(iced::Alignment::Center),
     )
@@ -297,11 +303,7 @@ fn detail_separator<'a>() -> Element<'a, Message> {
         .into()
 }
 
-fn action_row<'a>(
-    idx: usize,
-    vpn_state: &VpnState,
-    is_renaming: bool,
-) -> Element<'a, Message> {
+fn action_row<'a>(idx: usize, vpn_state: &VpnState, is_renaming: bool) -> Element<'a, Message> {
     let is_connected = matches!(vpn_state, VpnState::Connected);
     let (connect_label, connect_msg) = if is_connected {
         ("Disconnect", Message::Disconnect)
@@ -309,12 +311,11 @@ fn action_row<'a>(
         ("Connect", Message::ProfileConnectRequested(idx))
     };
 
-    let connect_base = button(
-        container(text(connect_label).size(12).center()).center_x(Length::Fill),
-    )
-    .on_press(connect_msg)
-    .padding([7, 10])
-    .width(Length::Fill);
+    let connect_base =
+        button(container(text(connect_label).size(12).center()).center_x(Length::Fill))
+            .on_press(connect_msg)
+            .padding([7, 10])
+            .width(Length::Fill);
 
     let connect_btn = if is_connected {
         connect_base.style(theme::connect_button_style(ConnectButtonKind::Connected))
@@ -336,12 +337,11 @@ fn action_row<'a>(
             .style(theme::action_neutral)
     };
 
-    let remove_btn =
-        button(container(text("Remove").size(12).center()).center_x(Length::Fill))
-            .on_press(Message::ProfileRemoved(idx))
-            .padding([7, 10])
-            .width(Length::Fill)
-            .style(theme::action_danger_outline);
+    let remove_btn = button(container(text("Remove").size(12).center()).center_x(Length::Fill))
+        .on_press(Message::ProfileRemoved(idx))
+        .padding([7, 10])
+        .width(Length::Fill)
+        .style(theme::action_danger_outline);
 
     row![connect_btn, rename_btn, remove_btn]
         .spacing(f32::from(theme::SPACE_SM))
