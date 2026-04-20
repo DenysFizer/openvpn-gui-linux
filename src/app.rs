@@ -28,6 +28,10 @@ pub fn run() -> iced::Result {
         icon,
         size: Size::new(460.0, 720.0),
         min_size: Some(Size::new(420.0, 560.0)),
+        platform_specific: window::settings::PlatformSpecific {
+            application_id: "openvpn-gui-linux".to_string(),
+            ..Default::default()
+        },
         ..window::Settings::default()
     };
 
