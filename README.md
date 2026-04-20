@@ -8,24 +8,9 @@ A simple, native desktop GUI for managing OpenVPN connections on Linux.
 [![Iced](https://img.shields.io/badge/UI-Iced%200.14-blueviolet)](https://iced.rs/)
 [![License](https://img.shields.io/badge/license-MIT-green)](#license)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux)](#)
+[![Download latest](https://img.shields.io/badge/Download-latest-2ea44f?logo=github&logoColor=white)](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)
 
 </div>
-
----
-
-## Overview
-
-`openvpn-gui-linux` is a lightweight graphical front-end for the OpenVPN client, written in Rust using the [Iced](https://iced.rs/) toolkit. It wraps the standard `openvpn` CLI via its management interface and provides a clean, modern UI for connecting to, monitoring, and troubleshooting VPN sessions.
-
-## Features
-
-- **One-click connect / disconnect** to any `.ovpn` profile
-- **Configuration picker** — browse and load profiles from disk
-- **Live connection status** and real-time log stream
-- **Username / password and static-challenge** authentication flows
-- **Inline certificates** (`<ca>`, `<cert>`, `<key>`, `<tls-auth>`) supported
-- **Persistent settings** stored in your user config directory
-- **Native, dependency-light UI** — no Electron, no web stack
 
 ## Screenshots
 
@@ -33,32 +18,37 @@ A simple, native desktop GUI for managing OpenVPN connections on Linux.
 | :---: | :---: | :---: |
 | ![Connect tab](assets/screenshots/connect.png) | ![Profiles tab](assets/screenshots/profiles.png) | ![Settings tab](assets/screenshots/settings.png) |
 
-## Requirements
+## Overview
 
-- Linux (tested on Ubuntu / Debian-family distros)
-- [`openvpn`](https://openvpn.net/) installed and available on `PATH`
-- Rust toolchain **1.85+** (edition 2024)
-- `pkexec` / `sudo` for elevated privileges when bringing interfaces up
+A Rust + [Iced](https://iced.rs/) front-end that drives the `openvpn` CLI through its management interface — a clean, dependency-light alternative to web-wrapped VPN clients.
 
-Install OpenVPN on Debian/Ubuntu:
+## Features
 
-```bash
-sudo apt install openvpn
-```
+|   |   |
+|---|---|
+| **One-click connect** — connect and disconnect any `.ovpn` profile | **Live status & logs** — real-time connection state and streaming output |
+| **Profile management** — browse `.ovpn` files and persist selections across launches | **Flexible auth** — username / password with static-challenge support |
+| **Inline certificates** — `<ca>`, `<cert>`, `<key>`, `<tls-auth>` blocks handled | **Native UI** — Iced + Rust, no Electron, no web stack |
 
 ## Installation
 
-Grab the latest release from the
-**[Releases page](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)**
-and pick whichever matches your distro. All artifacts depend on `openvpn`
-being installed on the host.
+Requires `openvpn` on your `PATH` (e.g. `sudo apt install openvpn` on Debian/Ubuntu).
 
-| Distro / use case         | Download                                      | Install                                                 |
-|---------------------------|-----------------------------------------------|---------------------------------------------------------|
-| Debian / Ubuntu           | `openvpn-gui-linux_<version>_amd64.deb`       | `sudo apt install ./openvpn-gui-linux_*_amd64.deb`      |
-| Fedora / RHEL / openSUSE  | `openvpn-gui-linux-<version>-1.x86_64.rpm`    | `sudo dnf install ./openvpn-gui-linux-*.rpm`            |
-| Arch / NixOS / any distro | `openvpn-gui-linux-<version>-x86_64.AppImage` | `chmod +x *.AppImage && ./openvpn-gui-linux-*.AppImage` |
-| Portable tarball          | `openvpn-gui-linux-<version>-x86_64.tar.gz`   | `tar xzf *.tar.gz && sudo ./*/install.sh`               |
+<div align="center">
+
+[![Debian / Ubuntu](https://img.shields.io/badge/Debian%20%2F%20Ubuntu-.deb-A81D33?logo=debian&logoColor=white)](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)
+[![Fedora / RHEL](https://img.shields.io/badge/Fedora%20%2F%20RHEL-.rpm-294172?logo=fedora&logoColor=white)](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)
+[![AppImage](https://img.shields.io/badge/Any%20distro-.AppImage-2E6FD0?logo=appimage&logoColor=white)](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)
+[![Portable](https://img.shields.io/badge/Portable-.tar.gz-525252?logo=linux&logoColor=white)](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)
+
+</div>
+
+| Distro                    | Install                                                 |
+|---------------------------|---------------------------------------------------------|
+| Debian / Ubuntu           | `sudo apt install ./openvpn-gui-linux_*_amd64.deb`      |
+| Fedora / RHEL / openSUSE  | `sudo dnf install ./openvpn-gui-linux-*.rpm`            |
+| Arch / NixOS / any distro | `chmod +x *.AppImage && ./openvpn-gui-linux-*.AppImage` |
+| Portable tarball          | `tar xzf *.tar.gz && sudo ./*/install.sh`               |
 
 ### Verify your download
 
@@ -67,6 +57,8 @@ sha256sum -c SHA256SUMS
 ```
 
 ### Build from source
+
+Requires Rust **1.85+** (edition 2024) and `pkexec` / `sudo` for elevated privileges when bringing interfaces up.
 
 ```bash
 git clone git@github.com:DenysFizer/openvpn-gui-linux.git
@@ -83,8 +75,7 @@ cargo install cargo-deb cargo-generate-rpm   # one-time
 ./scripts/package.sh                          # outputs to dist/
 ```
 
-Maintainers cutting a full release (builds everything above plus an
-AppImage and uploads to GitHub Releases):
+Maintainers cutting a full release (builds everything above plus an AppImage and uploads to GitHub Releases):
 
 ```bash
 ./scripts/release.sh
@@ -123,16 +114,6 @@ cargo test           # run unit & integration tests
 cargo clippy         # lints
 cargo fmt            # format
 ```
-
-## Roadmap
-
-- [ ] System tray integration
-- [ ] Multiple simultaneous profiles
-- [x] AppImage packaging
-- [ ] Flatpak packaging
-- [ ] Arch Linux AUR package
-- [ ] Dark/light theme toggle
-- [ ] Per-profile auto-connect
 
 ## Contributing
 
