@@ -11,6 +11,7 @@ repository = "https://github.com/DenysFizer/openvpn-gui-linux"
 maintainer = "Denys Fizer <fizerdenys@gmail.com>"
 section = "net"
 priority = "optional"
+revision = ""
 depends = "$auto, openvpn"
 assets = [
     ["target/release/openvpn-gui-linux", "usr/bin/", "755"],

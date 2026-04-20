@@ -48,27 +48,22 @@ sudo apt install openvpn
 
 ## Installation
 
-Pick whichever matches your distro. All artifacts depend on `openvpn` being
-installed on the host.
+Grab the latest release from the
+**[Releases page](https://github.com/DenysFizer/openvpn-gui-linux/releases/latest)**
+and pick whichever matches your distro. All artifacts depend on `openvpn`
+being installed on the host.
 
-### Debian / Ubuntu
+| Distro / use case         | Download                                      | Install                                                 |
+|---------------------------|-----------------------------------------------|---------------------------------------------------------|
+| Debian / Ubuntu           | `openvpn-gui-linux_<version>_amd64.deb`       | `sudo apt install ./openvpn-gui-linux_*_amd64.deb`      |
+| Fedora / RHEL / openSUSE  | `openvpn-gui-linux-<version>-1.x86_64.rpm`    | `sudo dnf install ./openvpn-gui-linux-*.rpm`            |
+| Arch / NixOS / any distro | `openvpn-gui-linux-<version>-x86_64.AppImage` | `chmod +x *.AppImage && ./openvpn-gui-linux-*.AppImage` |
+| Portable tarball          | `openvpn-gui-linux-<version>-x86_64.tar.gz`   | `tar xzf *.tar.gz && sudo ./*/install.sh`               |
 
-```bash
-sudo apt install ./openvpn-gui-linux_<version>_amd64.deb
-```
-
-### Fedora / RHEL / openSUSE
-
-```bash
-sudo dnf install ./openvpn-gui-linux-<version>-1.x86_64.rpm
-```
-
-### Any Linux (portable tarball)
+### Verify your download
 
 ```bash
-tar xzf openvpn-gui-linux-<version>-x86_64.tar.gz
-cd openvpn-gui-linux-<version>-x86_64
-sudo ./install.sh              # installs to /usr/local, override with PREFIX=~/.local
+sha256sum -c SHA256SUMS
 ```
 
 ### Build from source
@@ -86,6 +81,13 @@ The compiled binary will be at `target/release/openvpn-gui-linux`.
 ```bash
 cargo install cargo-deb cargo-generate-rpm   # one-time
 ./scripts/package.sh                          # outputs to dist/
+```
+
+Maintainers cutting a full release (builds everything above plus an
+AppImage and uploads to GitHub Releases):
+
+```bash
+./scripts/release.sh
 ```
 
 See [`packaging/README.md`](packaging/README.md) for details.
@@ -126,7 +128,8 @@ cargo fmt            # format
 
 - [ ] System tray integration
 - [ ] Multiple simultaneous profiles
-- [ ] Flatpak / AppImage packaging
+- [x] AppImage packaging
+- [ ] Flatpak packaging
 - [ ] Arch Linux AUR package
 - [ ] Dark/light theme toggle
 - [ ] Per-profile auto-connect
