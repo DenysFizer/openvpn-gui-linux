@@ -16,27 +16,24 @@ All output goes to `../dist/` (gitignored):
 
 ## Cutting a GitHub Release
 
-`scripts/release.sh` wraps `package.sh`, builds an AppImage on top of the
-three artifacts above, generates `SHA256SUMS`, tags the current commit,
-and uploads everything to
-[GitHub Releases](https://github.com/DenysFizer/openvpn-gui-linux/releases)
-via the `gh` CLI:
+Releases are published by CI. Pushing a `v*.*.*` tag whose version
+matches the one in `Cargo.toml` triggers
+[`.github/workflows/release.yml`](../.github/workflows/release.yml),
+which builds the three artifacts above plus an AppImage, generates
+`SHA256SUMS`, and uploads everything to
+[GitHub Releases](https://github.com/DenysFizer/openvpn-gui-linux/releases).
 
 ```bash
-./scripts/release.sh              # full release (interactive confirm)
-./scripts/release.sh --dry-run    # build everything, skip tag + upload
+# bump `version` in Cargo.toml, then:
+git commit -am "Release v0.2.0"
+git tag v0.2.0
+git push && git push --tags
 ```
 
-One-time tooling:
-
-```bash
-cargo install cargo-deb cargo-generate-rpm
-sudo apt install gh               # or equivalent; https://cli.github.com
-gh auth login
-```
-
-`linuxdeploy` and `appimagetool` are auto-downloaded to `../tools/` on
-first run (gitignored).
+The workflow refuses to run if the tag and `Cargo.toml` version
+disagree. `linuxdeploy` and `appimagetool` are downloaded on each run
+(not committed). No one-time setup or `gh auth login` is needed — CI
+authenticates with the repo's built-in `GITHUB_TOKEN`.
 
 ## Optional tooling
 
@@ -47,7 +44,7 @@ cargo install cargo-deb cargo-generate-rpm
 ```
 
 If either tool is missing, `package.sh` skips that artifact and keeps
-going (`release.sh` requires both).
+going. CI installs both automatically before running `package.sh`.
 
 ## Shared files
 

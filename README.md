@@ -75,10 +75,13 @@ cargo install cargo-deb cargo-generate-rpm   # one-time
 ./scripts/package.sh                          # outputs to dist/
 ```
 
-Maintainers cutting a full release (builds everything above plus an AppImage and uploads to GitHub Releases):
+Maintainers cut a release by bumping the version in `Cargo.toml` and pushing a matching tag — CI builds all artifacts (tarball, `.deb`, `.rpm`, AppImage, `SHA256SUMS`) and publishes the GitHub Release automatically:
 
 ```bash
-./scripts/release.sh
+# after bumping `version` in Cargo.toml
+git commit -am "Release v0.2.0"
+git tag v0.2.0
+git push && git push --tags
 ```
 
 See [`packaging/README.md`](packaging/README.md) for details.
