@@ -755,6 +755,7 @@ impl App {
     fn cleanup_connection_state(&mut self) {
         self.mgmt_cmd_tx = None;
         self.openvpn_pid = None;
+        self.otp_response.clear();
     }
 }
 
