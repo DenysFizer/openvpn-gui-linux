@@ -41,3 +41,5 @@ chrono = "0.4"
 serde = { version = "1", features = ["derive"] }
 toml = "1.1"
 dirs = "7"
+ksni = "0.3.6"
+image = { version = "0.25", default-features = false, features = ["png"] }
