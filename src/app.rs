@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use iced::widget::{column, container, text, text_editor};
+use iced::widget::{column, container, scrollable, text, text_editor};
 use iced::{Element, Length, Size, Subscription, Task, Theme, window};
 
 use crate::config::{OvpnConfig, parse_ovpn};
@@ -11,6 +11,7 @@ use crate::openvpn::management::MgmtCommand;
 use crate::openvpn::{AuthRequest, ConnectionInfo, LogEntry, VpnState};
 use crate::settings::{self, Profile};
 use crate::ui;
+use crate::ui::speed_chart::SpeedHistory;
 use crate::ui::tab_bar::Tab;
 
 const ICON_BYTES: &[u8] = include_bytes!("../assets/logo.png");
@@ -52,6 +53,7 @@ pub struct App {
     otp_response: String,
     vpn_state: VpnState,
     connection_info: Option<ConnectionInfo>,
+    speed_history: SpeedHistory,
     log_lines: Vec<LogEntry>,
     log_content: text_editor::Content,
     enable_logs: bool,
@@ -114,6 +116,7 @@ impl App {
             otp_response: String::new(),
             vpn_state: VpnState::Disconnected,
             connection_info: None,
+            speed_history: SpeedHistory::default(),
             log_lines: Vec::new(),
             log_content: text_editor::Content::new(),
             enable_logs,
@@ -354,6 +357,7 @@ impl App {
                 self.log_lines.clear();
                 self.log_content = text_editor::Content::new();
                 self.connection_info = None;
+                self.speed_history.reset();
 
                 let socket_path = crate::openvpn::manager::generate_socket_path();
                 self.mgmt_socket_path = Some(socket_path.clone());
@@ -524,6 +528,7 @@ impl App {
                     info.bytes_in = bytes_in;
                     info.bytes_out = bytes_out;
                 }
+                self.speed_history.record(bytes_in, bytes_out);
                 Task::none()
             }
             Message::MgmtError(err) => {
@@ -676,8 +681,8 @@ impl App {
         let inputs_enabled = !self.vpn_state.is_active();
 
         let body: Element<'_, Message> = match self.current_tab {
-            Tab::Connect => column![
-                ui::connect_view::connect_body(
+            Tab::Connect => {
+                let mut body_col = column![ui::connect_view::connect_body(
                     &self.config,
                     &self.username,
                     &self.password,
@@ -686,17 +691,22 @@ impl App {
                     self.spinner_frame,
                     &self.vpn_state,
                     &self.error_message,
-                ),
-                ui::status_bar::view(
+                )]
+                .spacing(f32::from(ui::theme::SPACE_LG))
+                .width(Length::Fill);
+
+                if self.connection_info.is_some() {
+                    body_col = body_col.push(ui::speed_chart::view(&self.speed_history));
+                }
+
+                body_col = body_col.push(ui::status_bar::view(
                     &self.vpn_state,
                     &self.connection_info,
                     self.config.is_some(),
-                ),
-            ]
-            .spacing(f32::from(ui::theme::SPACE_LG))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into(),
+                ));
+
+                scrollable(body_col).height(Length::Fill).into()
+            }
             Tab::Profiles => ui::profiles_view::view(
                 &self.profiles,
                 &self.parsed_profiles,

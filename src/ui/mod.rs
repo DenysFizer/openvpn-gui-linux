@@ -1,6 +1,7 @@
 pub mod connect_view;
 pub mod log_view;
 pub mod profiles_view;
+pub mod speed_chart;
 pub mod status_bar;
 pub mod tab_bar;
 pub mod theme;

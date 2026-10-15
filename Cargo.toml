@@ -29,7 +29,7 @@ assets = [
 ]
 
 [dependencies]
-iced = { version = "0.14", features = ["tokio", "advanced", "image"] }
+iced = { version = "0.14", features = ["tokio", "advanced", "image", "canvas"] }
 tokio = { version = "1", features = ["full"] }
 rfd = "0.17"
 base64 = "0.23"
