@@ -3,6 +3,7 @@ mod config;
 mod error;
 mod openvpn;
 mod settings;
+mod tray;
 mod ui;
 
 fn main() -> iced::Result {

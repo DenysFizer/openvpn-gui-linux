@@ -10,6 +10,7 @@ use crate::config::{OvpnConfig, parse_ovpn};
 use crate::openvpn::management::MgmtCommand;
 use crate::openvpn::{AuthRequest, ConnectionInfo, LogEntry, VpnState};
 use crate::settings::{self, Profile};
+use crate::tray;
 use crate::ui;
 use crate::ui::tab_bar::Tab;
 
@@ -69,6 +70,11 @@ pub struct App {
     current_tab: Tab,
     theme: Theme,
 
+    // Window / system tray state
+    window_id: Option<window::Id>,
+    window_hidden: bool,
+    was_minimized: bool,
+
     // Profile management
     profiles: Vec<Profile>,
     selected_profile_idx: Option<usize>,
@@ -126,6 +132,9 @@ impl App {
             spinner_frame: 0,
             current_tab: Tab::Connect,
             theme,
+            window_id: None,
+            window_hidden: false,
+            was_minimized: false,
             profiles,
             selected_profile_idx,
             parsed_profiles: HashMap::new(),
@@ -133,10 +142,15 @@ impl App {
         };
 
         // Build startup tasks
-        let mut tasks = vec![Task::perform(
-            crate::openvpn::manager::check_openvpn_installed(),
-            Message::OpenvpnChecked,
-        )];
+        let mut tasks = vec![
+            Task::perform(
+                crate::openvpn::manager::check_openvpn_installed(),
+                Message::OpenvpnChecked,
+            ),
+            // The tray icon stays available for the whole session.
+            tray::launch(),
+            window::latest().map(Message::WindowIdResolved),
+        ];
 
         // If we have a saved config path, parse it
         if let Some(path) = config_path {
@@ -258,6 +272,12 @@ pub enum Message {
     ProfileRenameCancelled,
     ProfileRemoved(usize),
     ProfileMetaLoaded(PathBuf, Result<OvpnConfig, String>),
+
+    // Window management / system tray
+    WindowIdResolved(Option<window::Id>),
+    PollMinimize,
+    MinimizedChecked(Option<bool>),
+    Tray(tray::TrayEvent),
 
     // Timer
     Tick,
@@ -557,6 +577,45 @@ impl App {
                 self.spinner_frame = self.spinner_frame.wrapping_add(1);
                 Task::none()
             }
+            Message::WindowIdResolved(id) => {
+                if id.is_some() {
+                    self.window_id = id;
+                }
+                Task::none()
+            }
+            Message::PollMinimize => match self.window_id {
+                Some(id) => window::is_minimized(id).map(Message::MinimizedChecked),
+                // The window may not have been registered yet; keep trying.
+                None => window::latest().map(Message::WindowIdResolved),
+            },
+            Message::MinimizedChecked(Some(true)) => {
+                let first_report = !self.was_minimized;
+                self.was_minimized = true;
+                if first_report && !self.window_hidden {
+                    // The user minimized the window: hide it so it disappears
+                    // from the taskbar while the tray icon stays available.
+                    self.hide_window()
+                } else {
+                    Task::none()
+                }
+            }
+            Message::MinimizedChecked(Some(false)) => {
+                self.was_minimized = false;
+                Task::none()
+            }
+            // The platform cannot report minimization (Wayland).
+            Message::MinimizedChecked(None) => Task::none(),
+            Message::Tray(event) => match event {
+                tray::TrayEvent::Activate | tray::TrayEvent::Show => self.show_window(),
+                tray::TrayEvent::Hide => self.hide_window(),
+                tray::TrayEvent::Quit => match self.window_id {
+                    Some(id) => window::close(id),
+                    None => window::latest().then(|latest| match latest {
+                        Some(id) => window::close(id),
+                        None => Task::none(),
+                    }),
+                },
+            },
             Message::DismissError => {
                 self.error_message = None;
                 Task::none()
@@ -729,7 +788,14 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        let mut subs = vec![];
+        let mut subs = vec![
+            // Tray events are always delivered.
+            tray::subscription(),
+            // The WM does not notify the application when the window gets
+            // minimized, so poll the window state (`_NET_WM_STATE_HIDDEN` on
+            // X11) and hide the window as soon as it is minimized.
+            iced::time::every(Duration::from_millis(300)).map(|_| Message::PollMinimize),
+        ];
 
         if let Some(socket_path) = &self.mgmt_socket_path
             && self.vpn_state.is_active()
@@ -756,6 +822,32 @@ impl App {
         self.mgmt_cmd_tx = None;
         self.openvpn_pid = None;
         self.otp_response.clear();
+    }
+
+    /// Hides the window into the system tray. Because the window is unmapped,
+    /// its entry also disappears from the taskbar.
+    fn hide_window(&mut self) -> Task<Message> {
+        let Some(id) = self.window_id else {
+            return Task::none();
+        };
+        self.window_hidden = true;
+        window::set_mode(id, window::Mode::Hidden)
+    }
+
+    /// Restores the window from the system tray and gives it focus.
+    fn show_window(&mut self) -> Task<Message> {
+        let Some(id) = self.window_id else {
+            return Task::none();
+        };
+        self.window_hidden = false;
+        // Until a poll reports `false`, assume the WM still flags the window
+        // as minimized (deiconifying is asynchronous); pretending it is
+        // minimized prevents the poll loop from hiding the window again.
+        self.was_minimized = true;
+
+        window::set_mode(id, window::Mode::Windowed)
+            .chain(window::minimize(id, false))
+            .chain(window::gain_focus(id))
     }
 }
 
